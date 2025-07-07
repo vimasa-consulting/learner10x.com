@@ -2,6 +2,8 @@
 
 ## The 10x Product Development Framework
 
+**🏆 Proven by Unicorn Startups** - Methodology refined with [Amit Agrawal](https://intro.co/AmitAgrawal?source=intro), mentor to multiple unicorn startups
+
 ### 1. Foundation
 - **Philosophy-driven idea** solving deep problem **10x better** for specific persona
 - Example: thoughts10x for early stage founders sharing journey via text/audio/video

@@ -173,6 +173,22 @@ This fullstack template is designed to support this framework:
 - Positive feedback amplified
 - Product ready for market launch
 
+
+## Framework Credibility & Mentorship
+
+This product development framework was refined through mentorship with **[Amit Agrawal](https://intro.co/AmitAgrawal?source=intro)**, who has personally seen this methodology work for many unicorn startups he has mentored.
+
+### About Amit Agrawal
+- **Founder & CEO** of OckyPocky, India's #1 edtech app for kids (10M+ users, 95% renewal rate)
+- **Former Head of YouTube India** - scaled platform to $100M+ revenue
+- **Startup Scale Expert** - Led GTM and product strategy for 8+ startups, scaling $0–$250M+ in two years
+- **Angel Investor & Board Advisor** - Including fintechs now valued at $300M+
+- **Backed by Top VCs** - Goodwater, AngelList's Quant Fund, Joe Montana's Liquid2
+
+**His expertise areas:**
+✔️ Using AI for startups ✔️ Founder mindset & prioritization ✔️ Validating startup ideas & finding early revenue ✔️ Refining product-market fit ✔️ Navigating hypergrowth ✔️ Fundraising from top global VCs
+
+**💡 Want to learn from Amit directly?** Book a consultation with him at [intro.co/AmitAgrawal](https://intro.co/AmitAgrawal?source=intro)
 ---
 
 *This framework has been proven through multiple successful product launches and represents a systematic approach to building products that truly solve real problems for real people.*

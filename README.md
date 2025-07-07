@@ -56,7 +56,7 @@ I've crafted this template based on years of experience building production appl
 ## Documentation
 
 ### Product Development
-- [10x Product Development Framework](/docs/product-development-framework.md) - **🎯 NEW!** Systematic approach to building products that solve real problems
+- [10x Product Development Framework](/docs/product-development-framework.md) - **🎯 NEW!** Proven methodology used by unicorn startups, refined with [Amit Agrawal](https://intro.co/AmitAgrawal?source=intro)
 
 ### Technical Documentation
 
