@@ -1,0 +1,124 @@
+---
+title: "Sample Development Guide"
+description: "A comprehensive sample guide demonstrating our enhanced MDX format with frontmatter, external links, and strategic GitHub showcasing."
+category: "developers"
+tags: ["sample", "development", "best-practices"]
+publishedAt: "2024-01-15"
+difficulty: "intermediate"
+externalLinks:
+  - title: "MDN Web Docs"
+    url: "https://developer.mozilla.org/"
+    description: "Comprehensive web development documentation"
+    category: "documentation"
+  - title: "React Documentation"
+    url: "https://react.dev/"
+    description: "Official React documentation and guides"
+    category: "documentation"
+  - title: "Next.js Documentation"
+    url: "https://nextjs.org/docs"
+    description: "Complete Next.js framework documentation"
+    category: "documentation"
+relatedGuides: ["backend-development", "frontend-development"]
+---
+
+# Sample Development Guide
+
+This is a sample guide demonstrating our enhanced MDX format with frontmatter support, external links, and strategic GitHub repository showcasing.
+
+## Introduction
+
+Welcome to our comprehensive development guide. This sample demonstrates:
+
+- **Enhanced MDX formatting** with custom components
+- **Strategic external linking** to authoritative sources
+- **GitHub repository showcasing** for community engagement
+- **Production-ready practices** battle-tested in real environments
+
+<Callout type="info">
+This is a sample callout component demonstrating our custom MDX components for enhanced content presentation.
+</Callout>
+
+## Development Best Practices
+
+### Code Quality Standards
+
+Maintaining high code quality is essential for production-ready applications. Here are key practices:
+
+1. **Consistent Code Style**: Use ESLint and Prettier for consistent formatting
+2. **Type Safety**: Implement TypeScript for better developer experience
+3. **Testing Strategy**: Comprehensive unit, integration, and E2E testing
+4. **Documentation**: Clear, actionable documentation for maintainability
+
+### Performance Optimization
+
+```typescript
+// Example: Optimized React component with proper memoization
+import React, { memo, useMemo } from 'react';
+
+interface UserListProps {
+  users: User[];
+  searchTerm: string;
+}
+
+export const UserList = memo(({ users, searchTerm }: UserListProps) => {
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => 
+      user.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [users, searchTerm]);
+
+  return (
+    <div className="user-list">
+      {filteredUsers.map(user => (
+        <UserCard key={user.id} user={user} />
+      ))}
+    </div>
+  );
+});
+```
+
+## Our Complete Methodology
+
+<GitHubShowcase 
+  repo="vimasa-consulting/documentation-framework-repos"
+  description="Explore our systematic approach to creating production-ready technical education with 400,000+ words of battle-tested content."
+/>
+
+## External Resources for Continued Learning
+
+The following external resources provide additional depth and context for the concepts covered in this guide:
+
+- **[MDN Web Docs](https://developer.mozilla.org/)**: Comprehensive web development documentation
+- **[React Documentation](https://react.dev/)**: Official React documentation and guides  
+- **[Next.js Documentation](https://nextjs.org/docs)**: Complete Next.js framework documentation
+- **[TypeScript Handbook](https://www.typescriptlang.org/docs/)**: Official TypeScript documentation
+- **[Web.dev](https://web.dev/)**: Google's resource for modern web development
+
+## Production Deployment Checklist
+
+When deploying to production, ensure you've addressed:
+
+- [ ] **Security**: HTTPS, security headers, dependency scanning
+- [ ] **Performance**: Bundle optimization, image optimization, caching
+- [ ] **Monitoring**: Error tracking, performance monitoring, uptime monitoring
+- [ ] **Accessibility**: WCAG compliance, keyboard navigation, screen reader support
+- [ ] **SEO**: Meta tags, structured data, sitemap generation
+
+<Callout type="success">
+This comprehensive approach ensures your applications are ready for production-scale deployment.
+</Callout>
+
+## Conclusion
+
+This sample guide demonstrates our systematic approach to technical education:
+
+1. **Comprehensive Coverage**: Real-world practices and implementation details
+2. **External Authority**: Links to trusted sources for additional learning
+3. **Community Resources**: GitHub repositories showcasing our methodology
+4. **Actionable Content**: Practical steps and code examples
+
+For more guides like this, explore our [complete methodology on GitHub](https://github.com/vimasa-consulting/documentation-framework-repos) and see how we systematically create production-ready technical education.
+
+---
+
+*This guide is part of our comprehensive technical education platform. Help us maintain and expand these free resources by exploring our methodology and supporting our mission of accessible, production-ready learning.* 
