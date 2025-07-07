@@ -143,7 +143,6 @@ Hey 👋, I'm here to give you **₹250💰** when you sign up with Niyo using m
 
 - **GitHub**: [@niranjanbala](https://github.com/niranjanbala)
 - **LinkedIn**: [Connect with me](https://linkedin.com/in/niranjanbala)
-- **Email**: [niranjanbala@example.com](mailto:niranjanbala@example.com)
 
 ## Contributing
 
