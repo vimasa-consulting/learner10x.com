@@ -3,6 +3,10 @@
 ## 🎯 Purpose
 This repository serves as the central hub for a comprehensive documentation framework spanning all aspects of software development. Each category is maintained as a separate repository for focused contributions and better organization.
 
+## 📋 Framework Documents
+- **[Framework Philosophy](FRAMEWORK_PHILOSOPHY.md)** - Core principles and approach behind this documentation framework
+- **[Framework Summary](FRAMEWORK_SUMMARY.md)** - Comprehensive overview of all categories and implementation strategy
+
 ## 📂 Category Repositories
 
 ### 🛠️ **[Development Guides](https://github.com/niranjanbala/development-guides)**
