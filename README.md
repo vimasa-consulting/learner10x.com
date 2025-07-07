@@ -1,4 +1,4 @@
-# Comprehensive Documentation Framework Template
+# Comprehensive Documentation Framework
 
 A production-ready documentation framework for building modern software development guides with industry best practices and proven methodologies.
 
@@ -9,6 +9,84 @@ A production-ready documentation framework for building modern software developm
 Create comprehensive, actionable documentation that empowers development teams to build scalable, high-performance applications. This framework provides a complete documentation foundation for any tech stack, emphasizing practical guidance, real-world examples, and production-ready practices.
 
 I've crafted this documentation framework based on years of experience building production applications, incorporating industry best practices and proven development methodologies from unicorn startups and enterprise projects.
+
+## 🚀 Modular Documentation Repositories
+
+This framework is organized into specialized repositories for maximum flexibility. Teams can use individual categories or the complete framework:
+
+### 📚 **[Development Guides](https://github.com/niranjanbala/development-guides)**
+Complete development practices and patterns
+- API Documentation Standards
+- Frontend & Backend Development
+- Testing Methodologies
+- Code Review Guidelines
+- Error Handling & Logging
+- Feature Flags & Local Development
+
+### 🏗️ **[Architecture Guides](https://github.com/niranjanbala/architecture-guides)**
+System architecture and design patterns
+- Domain-Driven Design
+- CQRS & Event Sourcing
+- API Design Patterns
+- Microservices Architecture
+- Hexagonal Architecture
+
+### 🚀 **[Performance & Scaling](https://github.com/niranjanbala/performance-scaling)**
+Performance optimization and scaling strategies
+- Auto-Scaling Patterns
+- Database Performance Optimization
+- CDN & Caching Strategies
+- Load Testing & Monitoring
+
+### 🎯 **[Product Development](https://github.com/niranjanbala/product-development)**
+Product management and development methodology
+- 10x Product Development Framework
+- User Experience Design
+- A/B Testing Frameworks
+- Customer Feedback Systems
+- Product Analytics
+
+### 🔒 **[Security Guides](https://github.com/niranjanbala/security-guides)**
+Security implementation and best practices
+- Security Implementation Checklist
+- Authentication & Authorization
+- Data Protection & Compliance
+- API Security & Infrastructure
+
+### 📊 **[Testing & QA](https://github.com/niranjanbala/testing-qa)**
+Testing strategies and QA methodologies
+- QA Testing Processes
+- Accessibility Testing
+- Visual Regression Testing
+- Test Automation Frameworks
+
+### 🚀 **[Deployment](https://github.com/niranjanbala/deployment)**
+Deployment strategies and CI/CD patterns
+- CI/CD Pipeline Configuration
+- Blue/Green & Canary Deployments
+- Infrastructure as Code
+- Release Management
+
+### 🔧 **[Operations & Maintenance](https://github.com/niranjanbala/operations-maintenance)**
+Operational procedures and maintenance
+- Monitoring & Observability
+- Incident Response
+- Performance Monitoring
+- System Maintenance
+
+### 👥 **[Team Process](https://github.com/niranjanbala/team-process)**
+Team collaboration and development processes
+- Agile Methodologies
+- Team Communication
+- Project Management
+- Code Review Processes
+
+### 🎓 **[Advanced Topics](https://github.com/niranjanbala/advanced-topics)**
+Advanced technical concepts and emerging technologies
+- Machine Learning Integration
+- Blockchain Development
+- Advanced Security Patterns
+- Emerging Technologies
 
 ## Core Features
 
@@ -29,70 +107,67 @@ I've crafted this documentation framework based on years of experience building 
 - **Scalable**: Covers everything from MVP to enterprise scale
 - **Tech-Agnostic**: Principles applicable to any tech stack
 
-## Documentation Categories
-
-### 📚 Development Guides
-- **API Documentation Standards** - Complete API design and documentation
-- **Frontend Development** - Modern React/Next.js patterns and performance
-- **Backend Development** - FastAPI/Python best practices and security
-- **Database Strategies** - Performance optimization and scaling patterns
-- **Testing Methodologies** - Comprehensive testing frameworks
-- **Error Handling & Logging** - Production-ready error management
-- **Feature Flags** - Advanced feature flag implementation
-- **Code Review Guidelines** - Effective code review processes
-
-### 🏗️ Architecture & Design
-- **Domain-Driven Design** - Strategic and tactical DDD patterns
-- **CQRS & Event Sourcing** - Advanced architectural patterns
-- **API Design Patterns** - REST, GraphQL, and API versioning strategies
-- **Microservices Architecture** - Service decomposition and communication
-- **System Design** - Scalable system architecture principles
-
-### 🚀 Performance & Scaling
-- **Auto-Scaling Patterns** - Intelligent scaling strategies and implementation
-- **Database Performance** - Query optimization and performance tuning
-- **CDN & Caching** - Multi-layer caching and global distribution
-- **Performance Monitoring** - Comprehensive monitoring and alerting
-- **Load Testing** - Performance testing methodologies
-
-### 🎯 Product Development
-- **10x Product Framework** - Proven methodology for rapid product development
-- **User Experience Design** - Complete UX design process and patterns
-- **A/B Testing Frameworks** - Experimentation and data-driven decisions
-- **Analytics & Metrics** - Product analytics and success measurement
-- **Customer Feedback** - Systematic feedback collection and analysis
-
-### 🔒 Security & Operations
-- **Security Implementation** - Complete security checklist and patterns
-- **Monitoring & Observability** - Production monitoring strategies
-- **Deployment Strategies** - Blue/green, canary, and rolling deployments
-- **CI/CD Pipelines** - Automated testing and deployment workflows
-
 ## Quick Start
 
+### Option 1: Clone Individual Categories
 ```bash
-# Clone the documentation framework
+# Clone only what you need
+git clone https://github.com/niranjanbala/development-guides.git
+git clone https://github.com/niranjanbala/architecture-guides.git
+git clone https://github.com/niranjanbala/performance-scaling.git
+```
+
+### Option 2: Clone Complete Framework
+```bash
+# Clone the main framework
 git clone https://github.com/niranjanbala/fullstack-template.git
 cd fullstack-template
 
-# Browse documentation
-# Start with the overview: ./docs/README.md
-# Choose your focus area and dive deep into specific guides
-
-# For new projects, use the setup script
+# Set up your project
 ./setup-new-project.sh your-project-name
 
-# Customize the documentation for your specific tech stack
-# Edit the guides to match your architecture and tools
+# Browse all documentation
+make status
+```
+
+### Option 3: Use the Setup Script
+```bash
+# Interactive setup with category selection
+./setup-new-project.sh
 ```
 
 ## 📖 How to Use This Framework
 
-1. **Start with Philosophy**: Read the [Product Development Framework](/docs/10-product/product-development-framework.md)
-2. **Choose Your Path**: Browse [docs/README.md](./docs/README.md) for category overview
+1. **Start with Philosophy**: Read the [Product Development Framework](https://github.com/niranjanbala/product-development)
+2. **Choose Your Categories**: Select the repositories most relevant to your needs
 3. **Deep Dive**: Follow comprehensive guides for your focus areas
 4. **Customize**: Adapt the templates and examples to your tech stack
 5. **Implement**: Use the actionable guidance to build your systems
+
+## 🎯 Who This Is For
+
+- **Startup Teams** - Building MVP to scale with proven methodologies
+- **Enterprise Teams** - Implementing best practices across large organizations
+- **Technical Leaders** - Providing comprehensive guidance to development teams
+- **Product Managers** - Understanding technical implementation and constraints
+- **Solo Developers** - Learning industry best practices and proven patterns
+
+## 🔧 Documentation Tools
+
+### Check Documentation Health
+```bash
+# Check status of all documentation
+make status
+
+# Validate markdown files
+make validate
+
+# Check for broken links
+make check-links
+
+# Serve documentation locally
+make serve
+```
 
 ## 🎯 Who This Is For
 
@@ -162,10 +237,26 @@ Hey 👋, I'm here to give you **₹250💰** when you sign up with Niyo using m
 
 This documentation framework welcomes contributions from the community!
 
-- 🐛 **Bug Reports**: Found inaccuracies or broken links? Create an issue
+- 🐛 **Bug Reports**: Found inaccuracies or broken links? Create an issue in the relevant repository
 - 💡 **Content Suggestions**: Propose new guides or improvements
 - 🔧 **Pull Requests**: Submit improvements to existing documentation
 - 📝 **Real-World Examples**: Share your implementation experiences
+
+## Repository Structure
+
+```
+Comprehensive Documentation Framework
+├── 📚 development-guides/          # Development practices and patterns
+├── 🏗️ architecture-guides/         # System architecture and design patterns  
+├── 🚀 performance-scaling/         # Performance and scaling strategies
+├── 🎯 product-development/         # Product development methodology
+├── 🔒 security-guides/             # Security implementation and best practices
+├── 📊 testing-qa/                  # Testing strategies and QA methodologies
+├── 🚀 deployment/                  # Deployment strategies and CI/CD
+├── 🔧 operations-maintenance/      # Operations and maintenance procedures
+├── 👥 team-process/                # Team collaboration and processes
+└── 🎓 advanced-topics/             # Advanced technical concepts
+```
 
 ## License
 

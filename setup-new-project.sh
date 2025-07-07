@@ -7,7 +7,13 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}📚 Setting up your new project documentation...${NC}"
+echo -e "${BLUE}📚 Comprehensive Documentation Framework Setup${NC}"
+echo -e "${BLUE}Choose your documentation setup approach:${NC}"
+echo ""
+echo "1. Complete Framework (all categories)"
+echo "2. Individual Categories (choose specific ones)"
+echo "3. Custom Project Documentation Setup"
+echo ""
 
 # Function to prompt for input with default value
 prompt_with_default() {
@@ -19,31 +25,115 @@ prompt_with_default() {
     echo "${response:-$default}"
 }
 
-# Get project details
-echo -e "\n${YELLOW}Project Configuration:${NC}"
-PROJECT_NAME=$(prompt_with_default "Project name" "my-project")
-PROJECT_DESCRIPTION=$(prompt_with_default "Project description" "A modern software project with comprehensive documentation")
-TECH_STACK=$(prompt_with_default "Primary tech stack" "Full-stack web application")
-TEAM_SIZE=$(prompt_with_default "Team size" "5-10 developers")
+# Function to clone a repository
+clone_repo() {
+    local repo_name="$1"
+    local display_name="$2"
+    
+    if [ -d "$repo_name" ]; then
+        echo -e "${YELLOW}⚠️  $display_name already exists, skipping...${NC}"
+    else
+        echo -e "${BLUE}📦 Cloning $display_name...${NC}"
+        git clone "https://github.com/niranjanbala/$repo_name.git" 2>/dev/null
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✅ $display_name cloned successfully${NC}"
+        else
+            echo -e "${RED}❌ Failed to clone $display_name${NC}"
+            echo -e "${YELLOW}Note: Repository might not exist yet. Create it manually from the category-repos folder.${NC}"
+        fi
+    fi
+}
 
-# Documentation preferences
-echo -e "\n${YELLOW}Documentation Preferences:${NC}"
-echo "Which documentation areas are most important for your project? (select categories)"
-echo "1. Development Guides"
-echo "2. Architecture & Design"
-echo "3. Performance & Scaling"
-echo "4. Product Development"
-echo "5. Security & Operations"
-echo "6. All categories"
-DOC_FOCUS=$(prompt_with_default "Choose focus (1-6)" "6")
+# Get setup choice
+SETUP_CHOICE=$(prompt_with_default "Choose setup option (1-3)" "1")
 
-# Update project files
-echo -e "\n${BLUE}🔧 Customizing documentation for your project...${NC}"
-
-# Update README with project-specific information
-if [[ -f "README.md" ]]; then
-    # Create a project-specific README
-    cat > PROJECT_README.md << EOF
+case $SETUP_CHOICE in
+    1)
+        echo -e "\n${BLUE}🎯 Setting up Complete Documentation Framework...${NC}"
+        
+        # Clone all category repositories
+        echo -e "\n${BLUE}📚 Cloning all documentation categories...${NC}"
+        
+        clone_repo "development-guides" "Development Guides"
+        clone_repo "architecture-guides" "Architecture Guides"
+        clone_repo "performance-scaling" "Performance & Scaling"
+        clone_repo "product-development" "Product Development"
+        clone_repo "security-guides" "Security Guides"
+        clone_repo "testing-qa" "Testing & QA"
+        clone_repo "deployment" "Deployment"
+        clone_repo "operations-maintenance" "Operations & Maintenance"
+        clone_repo "team-process" "Team Process"
+        clone_repo "advanced-topics" "Advanced Topics"
+        
+        echo -e "\n${GREEN}🎉 Complete documentation framework setup complete!${NC}"
+        ;;
+        
+    2)
+        echo -e "\n${BLUE}🎯 Individual Category Selection...${NC}"
+        echo -e "\nAvailable categories:"
+        echo "1. 📚 Development Guides"
+        echo "2. 🏗️ Architecture Guides"
+        echo "3. 🚀 Performance & Scaling"
+        echo "4. 🎯 Product Development"
+        echo "5. 🔒 Security Guides"
+        echo "6. 📊 Testing & QA"
+        echo "7. 🚀 Deployment"
+        echo "8. 🔧 Operations & Maintenance"
+        echo "9. 👥 Team Process"
+        echo "10. 🎓 Advanced Topics"
+        echo ""
+        
+        CATEGORIES=$(prompt_with_default "Enter category numbers (e.g., 1,3,4)" "1,3,4")
+        
+        # Process selected categories
+        IFS=',' read -ra SELECTED <<< "$CATEGORIES"
+        for i in "${SELECTED[@]}"; do
+            case $i in
+                1) clone_repo "development-guides" "Development Guides" ;;
+                2) clone_repo "architecture-guides" "Architecture Guides" ;;
+                3) clone_repo "performance-scaling" "Performance & Scaling" ;;
+                4) clone_repo "product-development" "Product Development" ;;
+                5) clone_repo "security-guides" "Security Guides" ;;
+                6) clone_repo "testing-qa" "Testing & QA" ;;
+                7) clone_repo "deployment" "Deployment" ;;
+                8) clone_repo "operations-maintenance" "Operations & Maintenance" ;;
+                9) clone_repo "team-process" "Team Process" ;;
+                10) clone_repo "advanced-topics" "Advanced Topics" ;;
+                *) echo -e "${RED}❌ Invalid category: $i${NC}" ;;
+            esac
+        done
+        
+        echo -e "\n${GREEN}🎉 Selected categories setup complete!${NC}"
+        ;;
+        
+    3)
+        echo -e "\n${BLUE}🎯 Custom Project Documentation Setup...${NC}"
+        
+        # Get project details
+        echo -e "\n${YELLOW}Project Configuration:${NC}"
+        PROJECT_NAME=$(prompt_with_default "Project name" "my-project")
+        PROJECT_DESCRIPTION=$(prompt_with_default "Project description" "A modern software project with comprehensive documentation")
+        TECH_STACK=$(prompt_with_default "Primary tech stack" "Full-stack web application")
+        TEAM_SIZE=$(prompt_with_default "Team size" "5-10 developers")
+        
+        # Documentation preferences
+        echo -e "\n${YELLOW}Documentation Preferences:${NC}"
+        echo "Which documentation areas are most important for your project?"
+        echo "1. Development Guides"
+        echo "2. Architecture & Design"
+        echo "3. Performance & Scaling"
+        echo "4. Product Development"
+        echo "5. Security & Operations"
+        echo "6. All categories"
+        DOC_FOCUS=$(prompt_with_default "Choose focus (1-6)" "6")
+        
+        # Create project-specific documentation structure
+        echo -e "\n${BLUE}🔧 Creating custom documentation structure...${NC}"
+        
+        mkdir -p docs/{development,architecture,performance,product,security,testing,deployment,operations,team-process,advanced}
+        
+        # Create a project-specific README
+        cat > PROJECT_README.md << EOF
 # $PROJECT_NAME Documentation
 
 $PROJECT_DESCRIPTION
@@ -67,8 +157,8 @@ This project uses a comprehensive documentation framework covering:
 
 ## Quick Start
 
-1. **Browse Documentation**: Start with [docs/README.md](./docs/README.md)
-2. **Choose Your Focus**: Select the most relevant guides for your current needs
+1. **Browse Documentation**: Start with the most relevant guides for your current needs
+2. **Choose Your Focus**: Select the categories that matter most to your project
 3. **Implement**: Follow the actionable guidance in each section
 4. **Customize**: Adapt the examples to your specific tech stack and requirements
 
@@ -80,12 +170,9 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on how to contribute to 
 
 This documentation is based on the [Comprehensive Documentation Framework](https://github.com/niranjanbala/fullstack-template) by Niranjan Bala.
 EOF
-    
-    echo -e "${GREEN}✓ Created project-specific README${NC}"
-fi
-
-# Create a contributing guide
-cat > CONTRIBUTING.md << EOF
+        
+        # Create a contributing guide
+        cat > CONTRIBUTING.md << EOF
 # Contributing to $PROJECT_NAME Documentation
 
 ## How to Contribute
@@ -121,9 +208,9 @@ Focus your contributions on these areas:
 
 Thank you for helping improve our documentation! 🙏
 EOF
-
-# Create a simple documentation maintenance script
-cat > maintain-docs.sh << 'EOF'
+        
+        # Create a simple documentation maintenance script
+        cat > maintain-docs.sh << 'EOF'
 #!/bin/bash
 
 # Simple documentation maintenance script
@@ -143,28 +230,64 @@ find docs -name "*.md" -type f -mtime -7 -exec ls -la {} \; | head -10
 
 echo "✅ Documentation health check complete"
 EOF
+        
+        chmod +x maintain-docs.sh
+        
+        echo -e "${GREEN}✓ Created project-specific documentation structure${NC}"
+        ;;
+        
+    *)
+        echo -e "${RED}❌ Invalid option selected${NC}"
+        exit 1
+        ;;
+esac
 
-chmod +x maintain-docs.sh
+# Initialize git repository if not already initialized
+if [ ! -d ".git" ]; then
+    echo -e "\n${BLUE}📦 Initializing git repository...${NC}"
+    git init
+    git add .
+    git commit -m "Initial commit: Documentation Framework Setup
 
-# Initialize git repository
-echo -e "\n${BLUE}📦 Initializing git repository...${NC}"
-git init
-git add .
-git commit -m "Initial commit: $PROJECT_NAME Documentation
-
-- Generated from comprehensive documentation framework
-- Project: $PROJECT_NAME
-- Tech Stack: $TECH_STACK  
-- Team Size: $TEAM_SIZE
+- Set up comprehensive documentation framework
+- Selected setup option: $SETUP_CHOICE
 - Ready for documentation and development"
-
-echo -e "${GREEN}✓ Git repository initialized${NC}"
+    
+    echo -e "${GREEN}✓ Git repository initialized${NC}"
+else
+    echo -e "${YELLOW}⚠️  Git repository already exists${NC}"
+fi
 
 # Final instructions
-echo -e "\n${GREEN}🎉 Documentation setup complete!${NC}"
+echo -e "\n${GREEN}🎉 Documentation framework setup complete!${NC}"
 echo -e "\n${YELLOW}Next Steps:${NC}"
-echo -e "1. Review PROJECT_README.md for your project overview"
-echo -e "2. Browse docs/README.md to explore available guides"
-echo -e "3. Customize the documentation for your specific tech stack"
-echo -e "4. Share with your team and start implementing best practices"
+
+case $SETUP_CHOICE in
+    1)
+        echo -e "1. Browse individual category repositories for detailed guides"
+        echo -e "2. Each category has its own README with specific guidance"
+        echo -e "3. Use 'make status' to check documentation health"
+        echo -e "4. Customize the documentation for your specific tech stack"
+        ;;
+    2)
+        echo -e "1. Browse the selected category repositories"
+        echo -e "2. Each category has its own README with specific guidance"
+        echo -e "3. Clone additional categories as needed"
+        echo -e "4. Customize the documentation for your specific tech stack"
+        ;;
+    3)
+        echo -e "1. Review PROJECT_README.md for your project overview"
+        echo -e "2. Start adding content to the docs/ folders"
+        echo -e "3. Use maintain-docs.sh to check documentation health"
+        echo -e "4. Customize the structure for your specific needs"
+        ;;
+esac
+
+echo -e "5. Share with your team and start implementing best practices"
+echo -e "\n${YELLOW}Available Commands:${NC}"
+echo -e "  make help     - Show all available commands"
+echo -e "  make status   - Check documentation status"
+echo -e "  make validate - Validate markdown files"
+echo -e "  make serve    - Serve documentation locally"
+
 echo -e "\n${YELLOW}Happy documenting! 📚${NC}"
