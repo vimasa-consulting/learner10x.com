@@ -18,7 +18,7 @@
 ### Database Performance (Production-Optimized)
 - **Query Response Time**: < 25ms average (achieved: 18ms average)
 - **Connection Pool**: Efficient connection management (20 pool size)
-- **Concurrent Users**: Support 10,000+ concurrent users (tested: 12,000)
+- **Concurrent Users**: Support for concurrent users with proper scaling
 - **Data Consistency**: ACID compliance with read replicas
 
 ## Scalability Architecture
@@ -137,7 +137,6 @@
 - **Database Query Time**: 245ms average
 - **Bundle Size**: 2.1MB gzipped
 - **Memory Usage**: 512MB per instance
-- **Concurrent User Limit**: 500 users
 
 #### After Optimization (Production)
 - **Initial Page Load**: 0.8 seconds (75% improvement)
@@ -145,7 +144,6 @@
 - **Database Query Time**: 18ms average (93% improvement)
 - **Bundle Size**: 380KB gzipped (82% reduction)
 - **Memory Usage**: 128MB per instance (75% reduction)
-- **Concurrent User Limit**: 12,000 users (2,400% improvement)
 
 ### Key Optimization Techniques Applied
 
