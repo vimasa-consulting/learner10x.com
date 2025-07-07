@@ -55,6 +55,11 @@ I've crafted this template based on years of experience building production appl
 
 ## Documentation
 
+### Product Development
+- [10x Product Development Framework](/docs/product-development-framework.md) - **🎯 NEW!** Systematic approach to building products that solve real problems
+
+### Technical Documentation
+
 - [Development Setup](./DEV_SETUP.md)
 - [Technical Architecture](./docs/architecture.md)
 - [Performance Requirements](./docs/performance.md)
