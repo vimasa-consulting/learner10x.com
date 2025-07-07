@@ -25,6 +25,35 @@ This comprehensive documentation hub provides everything you need to develop, te
 
 ---
 
+## 🎯 Framework Philosophy
+
+**Understanding the core principles and methodology that guide this framework**
+
+Before diving into specific categories, it's essential to understand the philosophical foundation and systematic approach that underlies all technical decisions and processes in this framework.
+
+### 📋 Core Framework Documents
+
+| Document | Purpose | Key Topics |
+|----------|---------|------------|
+| **[Framework Philosophy](../FRAMEWORK_PHILOSOPHY.md)** | Core principles and technology choices | Problem-solving approach, Technology stack rationale, Quality standards |
+| **[Technology Stack Decisions](./10-product/technology-stack-decisions.md)** | Detailed rationale for technology choices | Frontend/Backend choices, Trade-offs analysis, Migration strategies |
+| **[Development Methodology](./10-product/development-methodology.md)** | Systematic approach to building products | Project phases, Quality processes, Team collaboration |
+
+### 🎯 Core Principles
+- **Problem-First Approach**: Every technical decision solves a real problem
+- **10x Improvement Goal**: Focus on solutions that provide significant value
+- **Persona-Driven Development**: Build for specific user personas with clear use cases
+- **Systematic Validation**: Follow structured user testing (100 people → 10 cycles → 1000 interactions)
+- **Production-Ready by Default**: Build for production from day one
+- **Quality by Design**: Embed quality into the process, not as an afterthought
+
+### 🚀 Quick Start
+1. Read the [Framework Philosophy](../FRAMEWORK_PHILOSOPHY.md) to understand the guiding principles
+2. Review [Technology Stack Decisions](./10-product/technology-stack-decisions.md) to understand technology choices
+3. Follow the [Development Methodology](./10-product/development-methodology.md) for systematic product development
+
+---
+
 ## 🔧 01. Development
 
 **Core development practices and tools for building robust applications.**
