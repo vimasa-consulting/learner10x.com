@@ -5,7 +5,7 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: thoughts10x
+      POSTGRES_DB: myapp
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
@@ -35,7 +35,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/thoughts10x
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/myapp
       - ENVIRONMENT=development
       - DEBUG=true
     volumes:

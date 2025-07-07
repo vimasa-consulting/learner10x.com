@@ -34,7 +34,7 @@ cp backend/.env.example backend/.env
 # Edit backend/.env with your actual values:
 # - DATABASE_URL (local PostgreSQL or use Docker)
 # - CLERK_SECRET_KEY and CLERK_PUBLISHABLE_KEY
-# - OPENAI_API_KEY
+# - OPENAI_API_KEY (optional)
 # - Other API keys as needed
 ```
 
@@ -102,7 +102,7 @@ black . && isort . && flake8 .  # Run linting
 ## Project Structure
 
 ```
-thoughts10x/
+fullstack-template/
 ├── frontend/                    # Next.js application
 │   ├── src/
 │   │   ├── app/                # App router pages
@@ -141,10 +141,10 @@ make setup-db
 ```bash
 # Install PostgreSQL locally
 # Create database
-createdb thoughts10x
+createdb myapp
 
 # Update backend/.env with local DATABASE_URL
-DATABASE_URL=postgresql://username:password@localhost:5432/thoughts10x
+DATABASE_URL=postgresql://username:password@localhost:5432/myapp
 
 # Setup database tables
 cd backend && python -c "from app.core.database import Base, engine; Base.metadata.create_all(bind=engine)"
@@ -165,7 +165,7 @@ cd backend && python -c "from app.core.database import Base, engine; Base.metada
    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
    ```
 
-## AI Setup
+## AI Setup (Optional)
 
 ### OpenAI API
 1. Get API key from https://platform.openai.com/
@@ -251,18 +251,27 @@ Ensure all production environment variables are set:
 - API keys (Clerk, OpenAI, Pinecone)
 - Monitoring (Sentry DSN)
 
-### Frontend (Netlify)
+### Frontend Deployment
 ```bash
 cd frontend
 npm run build
-# Deploy to Netlify
+# Deploy to your preferred platform (Vercel, Netlify, etc.)
 ```
 
-### Backend (Railway)
+### Backend Deployment
 ```bash
-# Deploy to Railway
-railway deploy
+# Deploy to your preferred platform (Railway, Heroku, AWS, etc.)
 ```
+
+## Customization
+
+This template is designed to be easily customizable:
+
+1. **Replace placeholder API endpoints** with your application logic
+2. **Update database models** for your data schema
+3. **Customize frontend components** for your UI design
+4. **Configure authentication** for your user management needs
+5. **Add additional services** as needed
 
 ## Contributing
 

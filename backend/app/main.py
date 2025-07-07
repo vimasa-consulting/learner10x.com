@@ -31,8 +31,8 @@ Base.metadata.create_all(bind=engine)
 
 # Create FastAPI app
 app = FastAPI(
-    title="Thoughts10x API",
-    description="A platform for sharing thoughts among founders",
+    title="Fullstack Template API",
+    description="A modern fullstack template API built with FastAPI",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -67,7 +67,7 @@ async def health_check():
 async def root():
     return JSONResponse(
         content={
-            "message": "Welcome to Thoughts10x API",
+            "message": "Welcome to Fullstack Template API",
             "docs": "/api/docs",
             "health": "/health"
         }

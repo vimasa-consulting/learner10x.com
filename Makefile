@@ -1,8 +1,8 @@
-# Thoughts10x Development Makefile
+# Fullstack Template Development Makefile
 .PHONY: help install dev build test clean docker-up docker-down
 
 help: ## Show this help message
-	@echo "Thoughts10x Development Commands:"
+	@echo "Fullstack Template Development Commands:"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
 
@@ -29,7 +29,7 @@ build: ## Build both frontend and backend
 	@echo "Building frontend..."
 	cd frontend && npm run build
 	@echo "Building backend..."
-	cd backend && docker build -t thoughts10x-backend .
+	cd backend && docker build -t fullstack-template-backend .
 
 test: ## Run all tests
 	@echo "Running frontend tests..."
@@ -75,7 +75,7 @@ reset-db: ## Reset database
 	@echo "Resetting database..."
 	docker-compose stop db
 	docker-compose rm -f db
-	docker volume rm thoughts10x_postgres_data
+	docker volume rm fullstack-template_postgres_data
 	docker-compose up -d db
 	sleep 5
 	$(MAKE) setup-db

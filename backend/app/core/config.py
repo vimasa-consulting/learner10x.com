@@ -8,16 +8,16 @@ class Settings(BaseSettings):
     
     # API Settings
     API_V1_STR: str = "/api/v1"
-    PROJECT_NAME: str = "Thoughts10x"
+    PROJECT_NAME: str = "Fullstack Template"
     VERSION: str = "1.0.0"
-    DESCRIPTION: str = "A platform for sharing thoughts among founders"
+    DESCRIPTION: str = "A modern fullstack template for building web applications"
     
     # Environment
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
     
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/thoughts10x")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/myapp")
     
     # Authentication
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
