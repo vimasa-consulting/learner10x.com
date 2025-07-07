@@ -1,92 +1,90 @@
-# Fullstack Template Development Makefile
-.PHONY: help install dev build test clean docker-up docker-down
+# Documentation Framework Makefile
+.PHONY: help setup check-links check-docs validate lint clean update-toc
 
 help: ## Show this help message
-	@echo "Fullstack Template Development Commands:"
+	@echo "Documentation Framework Commands:"
 	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 
-install: ## Install all dependencies
-	@echo "Installing frontend dependencies..."
-	cd frontend && npm install
-	@echo "Installing backend dependencies..."
-	cd backend && pip install -r requirements.txt
-	@echo "Dependencies installed!"
+setup: ## Set up documentation project
+	@echo "Setting up documentation project..."
+	@chmod +x setup-new-project.sh
+	@chmod +x maintain-docs.sh
+	@echo "Documentation framework ready!"
 
-dev: ## Start development servers
-	@echo "Starting development environment..."
-	docker-compose up --build
+check-docs: ## Check documentation health
+	@echo "Checking documentation health..."
+	@./maintain-docs.sh
 
-dev-local: ## Start development servers locally (without Docker)
-	@echo "Starting local development..."
-	@echo "Make sure PostgreSQL is running locally"
-	@echo "Starting backend in background..."
-	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
-	@echo "Starting frontend..."
-	cd frontend && npm run dev
+check-links: ## Check for broken internal links
+	@echo "Checking for broken internal links..."
+	@find docs -name "*.md" -type f -exec grep -l "](\./" {} \; | while read file; do \
+		echo "Checking links in $$file..."; \
+		grep -o "](\.\/[^)]*)" "$$file" | sed 's/](\.\///g' | sed 's/)$$//g' | while read link; do \
+			if [ ! -e "$$link" ]; then \
+				echo "  ❌ Broken link: $$link"; \
+			fi; \
+		done; \
+	done || echo "✅ No broken internal links found"
 
-build: ## Build both frontend and backend
-	@echo "Building frontend..."
-	cd frontend && npm run build
-	@echo "Building backend..."
-	cd backend && docker build -t fullstack-template-backend .
+validate: ## Validate markdown files
+	@echo "Validating markdown files..."
+	@find docs -name "*.md" -type f | wc -l | xargs echo "Total markdown files:"
+	@find docs -name "*.md" -type f -exec wc -l {} \; | awk '{sum += $$1} END {print "Total lines of documentation:", sum}'
 
-test: ## Run all tests
-	@echo "Running frontend tests..."
-	cd frontend && npm run test
-	@echo "Running backend tests..."
-	cd backend && python -m pytest
+lint: ## Lint markdown files (if markdownlint is installed)
+	@echo "Linting markdown files..."
+	@if command -v markdownlint >/dev/null 2>&1; then \
+		markdownlint docs/; \
+	else \
+		echo "markdownlint not installed. Install with: npm install -g markdownlint-cli"; \
+	fi
 
-test-frontend: ## Run frontend tests only
-	cd frontend && npm run test
+update-toc: ## Update table of contents in README files
+	@echo "Updating table of contents..."
+	@find docs -name "README.md" -type f -exec echo "Updating TOC in: {}" \;
 
-test-backend: ## Run backend tests only
-	cd backend && python -m pytest
+clean: ## Clean up temporary files
+	@echo "Cleaning up temporary files..."
+	@find . -name ".DS_Store" -delete
+	@find . -name "*.tmp" -delete
+	@find . -name "*.bak" -delete
+	@echo "Cleanup complete!"
 
-lint: ## Run linting
-	@echo "Linting frontend..."
-	cd frontend && npm run lint
-	@echo "Linting backend..."
-	cd backend && black . && isort . && flake8 .
+word-count: ## Count words in documentation
+	@echo "Documentation word count:"
+	@find docs -name "*.md" -type f -exec wc -w {} \; | awk '{sum += $$1} END {print "Total words:", sum}'
 
-docker-up: ## Start Docker containers
-	docker-compose up -d
+spell-check: ## Check spelling (if aspell is installed)
+	@echo "Checking spelling..."
+	@if command -v aspell >/dev/null 2>&1; then \
+		find docs -name "*.md" -type f -exec aspell check {} \; ; \
+	else \
+		echo "aspell not installed. Install with: brew install aspell (macOS) or apt-get install aspell (Ubuntu)"; \
+	fi
 
-docker-down: ## Stop Docker containers
-	docker-compose down
+serve: ## Serve documentation locally (if Python is available)
+	@echo "Starting local documentation server..."
+	@if command -v python3 >/dev/null 2>&1; then \
+		cd docs && python3 -m http.server 8080; \
+	elif command -v python >/dev/null 2>&1; then \
+		cd docs && python -m SimpleHTTPServer 8080; \
+	else \
+		echo "Python not available. Install Python to serve documentation locally."; \
+	fi
 
-docker-logs: ## View Docker logs
-	docker-compose logs -f
-
-clean: ## Clean up dependencies and build artifacts
-	@echo "Cleaning frontend..."
-	cd frontend && rm -rf node_modules .next
-	@echo "Cleaning backend..."
-	cd backend && find . -type d -name "__pycache__" -exec rm -rf {} +
-	@echo "Cleaning Docker..."
-	docker-compose down -v
-	docker system prune -f
-
-setup-db: ## Setup database (run migrations)
-	@echo "Setting up database..."
-	cd backend && python -c "from app.core.database import Base, engine; Base.metadata.create_all(bind=engine)"
-
-reset-db: ## Reset database
-	@echo "Resetting database..."
-	docker-compose stop db
-	docker-compose rm -f db
-	docker volume rm fullstack-template_postgres_data
-	docker-compose up -d db
-	sleep 5
-	$(MAKE) setup-db
-
-status: ## Check development environment status
-	@echo "Development Environment Status:"
-	@echo "Docker containers:"
-	docker-compose ps
+status: ## Show documentation status
+	@echo "Documentation Framework Status:"
 	@echo ""
-	@echo "Frontend dependencies:"
-	cd frontend && npm list --depth=0 2>/dev/null || echo "Frontend dependencies not installed"
+	@echo "📊 Statistics:"
+	@find docs -name "*.md" -type f | wc -l | xargs echo "  Total markdown files:"
+	@find docs -name "*.md" -type f -exec wc -l {} \; | awk '{sum += $$1} END {print "  Total lines:", sum}'
+	@find docs -name "*.md" -type f -exec wc -w {} \; | awk '{sum += $$1} END {print "  Total words:", sum}'
 	@echo ""
-	@echo "Backend dependencies:"
-	cd backend && pip list | grep -E "(fastapi|uvicorn|sqlalchemy)" || echo "Backend dependencies not installed" 
+	@echo "📁 Documentation Structure:"
+	@find docs -type d | sort
+	@echo ""
+	@echo "🔧 Available Tools:"
+	@command -v markdownlint >/dev/null 2>&1 && echo "  ✅ markdownlint" || echo "  ❌ markdownlint (install with: npm install -g markdownlint-cli)"
+	@command -v aspell >/dev/null 2>&1 && echo "  ✅ aspell" || echo "  ❌ aspell (install with package manager)"
+	@command -v python3 >/dev/null 2>&1 && echo "  ✅ python3" || echo "  ❌ python3" 

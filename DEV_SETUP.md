@@ -1,288 +1,311 @@
-# Development Environment Setup
+# Documentation Framework Contributor Guide
+
+## Overview
+
+Welcome to the Comprehensive Documentation Framework! This guide explains how to contribute to, maintain, and customize this documentation framework for your projects.
 
 ## Prerequisites
 
-Before starting, ensure you have the following installed:
+To contribute to this documentation framework, you'll need:
 
-- **Node.js** (v18 or higher)
-- **Python** (v3.11 or higher)
-- **Docker** and **Docker Compose**
-- **Git**
-- **Make** (optional, for convenience commands)
+- **Git** for version control
+- **Text Editor** (VS Code, Vim, etc.)
+- **Markdown Knowledge** (basic understanding of Markdown syntax)
+- **Optional Tools**:
+  - **Node.js** (for markdownlint)
+  - **Python** (for local documentation server)
+  - **aspell** (for spell checking)
 
 ## Quick Start
 
-### 1. Clone and Install Dependencies
+### 1. Set Up Your Documentation Project
 
 ```bash
-# Install all dependencies
-make install
+# Clone the framework
+git clone https://github.com/niranjanbala/fullstack-template.git
+cd fullstack-template
 
-# Or manually:
-cd frontend && npm install
-cd ../backend && pip install -r requirements.txt
+# Set up your project
+./setup-new-project.sh
+
+# Make the framework ready
+make setup
 ```
 
-### 2. Environment Setup
-
-Create environment files:
+### 2. Explore the Documentation Structure
 
 ```bash
-# Backend environment
-cp backend/.env.example backend/.env
+# Check documentation status
+make status
 
-# Edit backend/.env with your actual values:
-# - DATABASE_URL (local PostgreSQL or use Docker)
-# - CLERK_SECRET_KEY and CLERK_PUBLISHABLE_KEY
-# - OPENAI_API_KEY (optional)
-# - Other API keys as needed
+# View all available commands
+make help
+
+# Check documentation health
+make check-docs
 ```
 
-### 3. Start Development Environment
-
-#### Option A: Using Docker (Recommended)
-```bash
-# Start all services (database, backend, frontend)
-make dev
-
-# Or directly:
-docker-compose up --build
-```
-
-#### Option B: Local Development
-```bash
-# Start PostgreSQL locally (or use Docker just for DB)
-docker-compose up -d db
-
-# Start backend and frontend
-make dev-local
-```
-
-### 4. Access the Application
-
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/api/docs
-- **Database**: localhost:5432 (postgres/postgres)
-
-## Development Commands
-
-### Using Make (Recommended)
+### 3. Start Contributing
 
 ```bash
-make help                 # Show all available commands
-make install             # Install dependencies
-make dev                 # Start development environment
-make dev-local           # Start local development (no Docker)
-make test               # Run all tests
-make lint               # Run linting
-make clean              # Clean up
-make status             # Check environment status
+# Validate your markdown files
+make validate
+
+# Check for broken links
+make check-links
+
+# Lint markdown files (if markdownlint is installed)
+make lint
+
+# Count words in documentation
+make word-count
 ```
 
-### Manual Commands
+## Documentation Structure
 
-#### Frontend
+```
+docs/
+├── README.md                           # Main documentation index
+├── 01-development/                     # Development guides
+│   ├── api-documentation-standards.md
+│   ├── backend-development.md
+│   ├── frontend-development.md
+│   ├── testing-methodologies.md
+│   └── ...
+├── 02-testing-qa/                      # Testing and QA guides
+├── 03-deployment/                      # Deployment strategies
+├── 04-scaling-performance/             # Performance and scaling
+├── 05-operations-maintenance/          # Operations guides
+├── 06-team-process/                    # Team processes
+├── 07-advanced-topics/                 # Advanced topics
+├── 08-security/                        # Security guides
+├── 09-architecture/                    # Architecture guides
+└── 10-product/                         # Product development
+```
+
+## Contributing Guidelines
+
+### Documentation Standards
+
+1. **Clear and Actionable**: Every guide should be immediately useful
+2. **Real-World Examples**: Include practical code examples and implementations
+3. **Consistent Structure**: Follow the established documentation format
+4. **Up-to-Date**: Ensure information reflects current best practices
+
+### Writing Style
+
+- **Use Active Voice**: "Deploy the application" not "The application should be deployed"
+- **Include Examples**: Show, don't just tell
+- **Be Specific**: Provide exact commands, file paths, and configurations
+- **Consider Your Audience**: Write for developers with varying experience levels
+
+### File Organization
+
+- **Use Descriptive Names**: `api-documentation-standards.md` not `api.md`
+- **Follow Category Structure**: Place files in appropriate category folders
+- **Cross-Reference**: Link to related sections and external resources
+- **Update Indexes**: Keep README files updated with new content
+
+## Maintenance Commands
+
+### Check Documentation Health
+
 ```bash
-cd frontend
-npm run dev              # Start development server
-npm run build            # Build for production
-npm run test             # Run tests
-npm run lint             # Run linting
+# Run comprehensive health check
+make check-docs
+
+# Check for broken internal links
+make check-links
+
+# Validate markdown files
+make validate
+
+# Check spelling (if aspell is installed)
+make spell-check
 ```
 
-#### Backend
+### Documentation Statistics
+
 ```bash
-cd backend
-uvicorn app.main:app --reload    # Start development server
-python -m pytest                # Run tests
-black . && isort . && flake8 .  # Run linting
+# Get word count
+make word-count
+
+# View documentation status
+make status
 ```
 
-## Project Structure
+### Development Tools
 
-```
-fullstack-template/
-├── frontend/                    # Next.js application
-│   ├── src/
-│   │   ├── app/                # App router pages
-│   │   ├── components/         # React components
-│   │   ├── lib/               # Utility functions
-│   │   └── stores/            # Zustand stores
-│   ├── public/                # Static assets
-│   └── package.json
-├── backend/                    # FastAPI application
-│   ├── app/
-│   │   ├── api/               # API routes
-│   │   ├── core/              # Core configuration
-│   │   ├── models/            # Database models
-│   │   ├── services/          # Business logic
-│   │   └── utils/             # Utility functions
-│   ├── requirements.txt
-│   └── Dockerfile
-├── docs/                       # Documentation
-├── docker-compose.yml          # Development environment
-├── Makefile                    # Development commands
-└── README.md
-```
-
-## Database Setup
-
-### Using Docker (Recommended)
 ```bash
-# Start PostgreSQL in Docker
-docker-compose up -d db
+# Serve documentation locally
+make serve
+# Access at http://localhost:8080
 
-# Setup database tables
-make setup-db
+# Clean up temporary files
+make clean
 ```
 
-### Using Local PostgreSQL
+## Adding New Documentation
+
+### 1. Choose the Right Category
+
+- **01-development/**: Development practices and patterns
+- **02-testing-qa/**: Testing strategies and QA processes
+- **03-deployment/**: Deployment and release management
+- **04-scaling-performance/**: Performance optimization and scaling
+- **05-operations-maintenance/**: Operations and maintenance
+- **06-team-process/**: Team processes and collaboration
+- **07-advanced-topics/**: Advanced technical topics
+- **08-security/**: Security implementation and best practices
+- **09-architecture/**: Architecture and design patterns
+- **10-product/**: Product development and management
+
+### 2. Create Your Documentation
+
 ```bash
-# Install PostgreSQL locally
-# Create database
-createdb myapp
+# Create new documentation file
+touch docs/01-development/your-new-guide.md
 
-# Update backend/.env with local DATABASE_URL
-DATABASE_URL=postgresql://username:password@localhost:5432/myapp
-
-# Setup database tables
-cd backend && python -c "from app.core.database import Base, engine; Base.metadata.create_all(bind=engine)"
+# Edit the file with your content
+# Follow the established structure and style
 ```
 
-## Authentication Setup (Clerk)
+### 3. Update Category README
 
-1. **Create Clerk Account**: Sign up at https://clerk.com
-2. **Create Application**: Create a new application in your Clerk dashboard
-3. **Get API Keys**: Copy your publishable and secret keys
-4. **Update Environment Variables**:
-   ```bash
-   # In backend/.env
-   CLERK_SECRET_KEY=your-clerk-secret-key
-   CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
-
-   # In frontend/.env.local
-   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
-   ```
-
-## AI Setup (Optional)
-
-### OpenAI API
-1. Get API key from https://platform.openai.com/
-2. Add to backend/.env:
-   ```
-   OPENAI_API_KEY=your-openai-api-key
-   ```
-
-### Vector Database (Pinecone)
-1. Sign up at https://pinecone.io/
-2. Create an index
-3. Add to backend/.env:
-   ```
-   PINECONE_API_KEY=your-pinecone-api-key
-   PINECONE_ENVIRONMENT=your-pinecone-environment
-   ```
-
-## Testing
-
-### Frontend Testing
 ```bash
-cd frontend
-npm run test              # Run unit tests with Vitest
-npm run test:watch        # Watch mode
-npm run test:e2e          # Run E2E tests with Playwright
+# Add your new guide to the appropriate category README
+# Include description and link
 ```
 
-### Backend Testing
+### 4. Validate and Test
+
 ```bash
-cd backend
-python -m pytest                    # Run all tests
-python -m pytest -v                 # Verbose output
-python -m pytest --cov=app         # With coverage
+# Validate your new documentation
+make validate
+
+# Check for broken links
+make check-links
+
+# Test locally
+make serve
 ```
+
+## Documentation Template
+
+Use this template for new documentation:
+
+```markdown
+# Guide Title
+
+Brief description of what this guide covers and who it's for.
+
+## Overview
+
+- What problem does this solve?
+- Who is the target audience?
+- What will readers learn?
+
+## Prerequisites
+
+- Required knowledge
+- Tools needed
+- Dependencies
+
+## Core Concepts
+
+### Concept 1
+
+Explanation with examples.
+
+### Concept 2
+
+Explanation with examples.
+
+## Implementation
+
+### Step 1: Setup
+
+```bash
+# Code examples
+```
+
+### Step 2: Configuration
+
+```yaml
+# Configuration examples
+```
+
+## Best Practices
+
+- List of best practices
+- Common pitfalls to avoid
+- Performance considerations
 
 ## Troubleshooting
 
-### Common Issues
+Common issues and solutions.
 
-1. **Port Already in Use**
-   ```bash
-   # Kill processes using ports 3000 or 8000
-   lsof -ti:3000 | xargs kill -9
-   lsof -ti:8000 | xargs kill -9
-   ```
+## Advanced Topics
 
-2. **Database Connection Issues**
-   ```bash
-   # Check if PostgreSQL is running
-   docker-compose ps
-   
-   # Reset database
-   make reset-db
-   ```
+Advanced use cases and patterns.
 
-3. **Frontend Build Issues**
-   ```bash
-   # Clear Next.js cache
-   cd frontend && rm -rf .next
-   
-   # Reinstall dependencies
-   rm -rf node_modules package-lock.json
-   npm install
-   ```
+## Related Resources
 
-4. **Backend Import Issues**
-   ```bash
-   # Ensure you're in the backend directory
-   cd backend
-   
-   # Check Python path
-   python -c "import sys; print(sys.path)"
-   
-   # Install dependencies
-   pip install -r requirements.txt
-   ```
-
-## Production Deployment
-
-### Environment Variables
-Ensure all production environment variables are set:
-- Database URL (production PostgreSQL)
-- API keys (Clerk, OpenAI, Pinecone)
-- Monitoring (Sentry DSN)
-
-### Frontend Deployment
-```bash
-cd frontend
-npm run build
-# Deploy to your preferred platform (Vercel, Netlify, etc.)
+- Internal links to related documentation
+- External resources and references
 ```
 
-### Backend Deployment
-```bash
-# Deploy to your preferred platform (Railway, Heroku, AWS, etc.)
-```
+## Tools and Utilities
+
+### Recommended Tools
+
+- **VS Code**: Excellent markdown support with extensions
+- **markdownlint**: Linting for consistent markdown style
+- **aspell**: Spell checking for documentation
+- **Grammarly**: Grammar and style checking
+
+### VS Code Extensions
+
+- **Markdown All in One**: Comprehensive markdown support
+- **markdownlint**: Linting and style checking
+- **Markdown Preview Enhanced**: Better preview experience
+- **Spell Right**: Spell checking in VS Code
 
 ## Customization
 
-This template is designed to be easily customizable:
+### For Your Project
 
-1. **Replace placeholder API endpoints** with your application logic
-2. **Update database models** for your data schema
-3. **Customize frontend components** for your UI design
-4. **Configure authentication** for your user management needs
-5. **Add additional services** as needed
+1. **Update Project-Specific Information**: Edit examples to match your tech stack
+2. **Add Your Standards**: Include your team's coding standards and practices
+3. **Remove Irrelevant Sections**: Focus on what's important for your project
+4. **Add Company-Specific Guides**: Include internal processes and procedures
 
-## Contributing
+### For Your Team
 
-1. Create a feature branch
-2. Make your changes
-3. Run tests and linting
-4. Create a pull request
+1. **Create Team Style Guide**: Document your team's preferred patterns
+2. **Add Code Examples**: Include examples from your actual codebase
+3. **Document Decisions**: Record architectural and technical decisions
+4. **Create Runbooks**: Document operational procedures
 
-## Support
+## Support and Community
 
-For issues or questions:
-1. Check the troubleshooting section
-2. Review the documentation in `/docs`
-3. Create an issue in the GitHub repository 
+### Getting Help
+
+- **Create Issues**: Report problems or suggest improvements
+- **Contribute**: Submit pull requests with improvements
+- **Share Examples**: Contribute real-world examples and case studies
+
+### Community Guidelines
+
+- **Be Respectful**: Maintain a welcoming environment
+- **Be Helpful**: Share knowledge and assist others
+- **Be Constructive**: Provide actionable feedback
+- **Be Patient**: Not everyone has the same experience level
+
+## License
+
+This documentation framework is released under the MIT License. Feel free to use, modify, and distribute for any purpose.
+
+---
+
+*Happy documenting! 📚* 
