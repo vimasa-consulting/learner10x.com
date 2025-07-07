@@ -61,6 +61,9 @@ Before diving into specific categories, it's essential to understand the philoso
 ### 📋 Available Guides
 - **[Backend Development](./01-development/backend-development.md)** - API design, database patterns, security implementation
 - **[Frontend Development](./01-development/frontend-development.md)** - Component architecture, performance, accessibility
+- **[Container Development Patterns](./01-development/container-development-patterns.md)** - Docker patterns, multi-stage builds, orchestration
+- **[Testing Methodologies](./01-development/testing-methodologies.md)** - TDD, BDD, testing strategies and patterns
+- **[Microservices Patterns](./01-development/microservices-patterns.md)** - Service design, communication, data management
 - **[Developer Onboarding](./01-development/developer-onboarding.md)** - Complete setup guide for new team members
 - **[Code Review Guidelines](./01-development/code-review-guidelines.md)** - Standards and best practices for code reviews
 - **[API Documentation Standards](./01-development/api-documentation-standards.md)** - OpenAPI/Swagger documentation patterns
@@ -83,6 +86,7 @@ Before diving into specific categories, it's essential to understand the philoso
 
 ### 📋 Available Guides
 - **[QA & Testing](./02-testing-qa/qa-testing.md)** - Complete testing strategy and frameworks
+- **[Load Testing Strategies](./02-testing-qa/load-testing-strategies.md)** - Performance testing, scalability validation, bottleneck identification
 - **[Visual Regression Testing](./02-testing-qa/visual-regression-testing.md)** - UI consistency and visual quality assurance
 - **[Accessibility Testing](./02-testing-qa/accessibility-testing.md)** - WCAG compliance and inclusive design testing
 
@@ -106,6 +110,7 @@ Before diving into specific categories, it's essential to understand the philoso
 
 ### 📋 Available Guides
 - **[Deployment Strategies](./03-deployment/deployment-strategies.md)** - Multi-environment deployment approaches
+- **[Kubernetes Deployment Patterns](./03-deployment/kubernetes-deployment-patterns.md)** - Container orchestration, scaling, service mesh
 - **[CI/CD Pipeline](./03-deployment/ci-cd-pipeline.md)** - Automated deployment workflows
 
 ### 🎯 Deployment Flow
@@ -147,6 +152,7 @@ Development → Staging → Production
 
 ### 📋 Available Guides
 - **[Monitoring & Observability](./05-operations-maintenance/monitoring-observability.md)** - Comprehensive system monitoring
+- **[Incident Response Management](./05-operations-maintenance/incident-response-management.md)** - Detection, escalation, resolution, and post-incident activities
 
 ### 🎯 Monitoring Stack
 ```
@@ -165,7 +171,7 @@ Grafana  ELK Stack  Jaeger  PagerDuty
 **Team collaboration, workflows, and process documentation.**
 
 ### 📋 Available Guides
-- **Team Workflows** *(Coming Soon)* - Agile processes and team collaboration
+- **[Agile Development Practices](./06-team-process/agile-development-practices.md)** - Scrum, sprint planning, team collaboration patterns
 - **Project Management** *(Coming Soon)* - Planning and execution strategies
 - **Knowledge Management** *(Coming Soon)* - Documentation and knowledge sharing
 
@@ -176,10 +182,10 @@ Grafana  ELK Stack  Jaeger  PagerDuty
 **Specialized topics for advanced implementations and integrations.**
 
 ### 📋 Available Guides
-- **Microservices Architecture** *(Coming Soon)* - Service decomposition and communication
-- **Event-Driven Architecture** *(Coming Soon)* - Event sourcing and CQRS patterns
+- **[Event-Driven Architecture](./07-advanced-topics/event-driven-architecture.md)** - Event patterns, stream processing, data consistency
 - **Machine Learning Integration** *(Coming Soon)* - ML model deployment and monitoring
 - **Blockchain Integration** *(Coming Soon)* - Crypto and smart contract integration
+- **GraphQL Implementation** *(Coming Soon)* - API design and optimization
 
 ---
 
@@ -189,6 +195,7 @@ Grafana  ELK Stack  Jaeger  PagerDuty
 
 ### 📋 Available Guides
 - **[Security](./08-security/security.md)** - Comprehensive security implementation guide
+- **[Zero Trust Security Model](./08-security/zero-trust-security-model.md)** - Never trust, always verify security architecture
 
 ### 🎯 Security Pillars
 - **Authentication**: Multi-factor, biometric, risk-based
