@@ -133,6 +133,9 @@ Development → Staging → Production
 ### 📋 Available Guides
 - **[Scaling Strategies](./04-scaling-performance/scaling-strategies.md)** - Horizontal/vertical scaling and load balancing
 - **[Performance](./04-scaling-performance/performance.md)** - Performance optimization and monitoring
+- **[Auto-Scaling Patterns](./04-scaling-performance/auto-scaling-patterns.md)** - Intelligent scaling strategies and implementation
+- **[Database Performance Optimization](./04-scaling-performance/database-performance-optimization.md)** - Query optimization, indexing, and scaling strategies
+- **[CDN and Caching Strategies](./04-scaling-performance/cdn-caching-strategies.md)** - Global distribution and multi-layer caching
 
 ### 🎯 Performance Targets
 - **Page Load**: < 2 seconds
@@ -143,6 +146,8 @@ Development → Staging → Production
 ### 🚀 Quick Start
 1. Understand [Scaling Strategies](./04-scaling-performance/scaling-strategies.md) for your expected load
 2. Implement [Performance Monitoring](./04-scaling-performance/performance.md) early
+3. Set up [Auto-Scaling Patterns](./04-scaling-performance/auto-scaling-patterns.md) for dynamic load handling
+4. Optimize with [Database Performance](./04-scaling-performance/database-performance-optimization.md) techniques
 
 ---
 
@@ -215,6 +220,9 @@ Grafana  ELK Stack  Jaeger  PagerDuty
 
 ### 📋 Available Guides
 - **[Architecture](./09-architecture/architecture.md)** - System design and architectural patterns
+- **[Domain-Driven Design (DDD)](./09-architecture/domain-driven-design.md)** - Strategic and tactical DDD patterns for complex domains
+- **[CQRS and Event Sourcing](./09-architecture/cqrs-event-sourcing.md)** - Command Query Responsibility Segregation and event-driven patterns
+- **[API Design Patterns](./09-architecture/api-design-patterns.md)** - REST, GraphQL, and API design best practices
 
 ### 🎯 Architecture Principles
 - **Scalability**: Horizontal scaling support
@@ -225,6 +233,8 @@ Grafana  ELK Stack  Jaeger  PagerDuty
 
 ### 🚀 Quick Start
 1. Understand the [Architecture Overview](./09-architecture/architecture.md) before making design decisions
+2. Apply [Domain-Driven Design](./09-architecture/domain-driven-design.md) for complex business domains
+3. Design APIs using [API Design Patterns](./09-architecture/api-design-patterns.md) for consistency
 
 ---
 
@@ -234,6 +244,8 @@ Grafana  ELK Stack  Jaeger  PagerDuty
 
 ### 📋 Available Guides
 - **[Product Development Framework](./10-product/product-development-framework.md)** - End-to-end product development process
+- **[User Experience Design](./10-product/user-experience-design.md)** - UX principles, research methods, and design patterns
+- **[A/B Testing Frameworks](./10-product/ab-testing-frameworks.md)** - Experimentation strategies and statistical analysis
 
 ### 🎯 Product Development Lifecycle
 ```
@@ -242,6 +254,8 @@ Research → Design → Develop → Test → Launch → Iterate
 
 ### 🚀 Quick Start
 1. Follow the [Product Development Framework](./10-product/product-development-framework.md) for new features
+2. Apply [User Experience Design](./10-product/user-experience-design.md) principles for optimal user experience
+3. Use [A/B Testing Frameworks](./10-product/ab-testing-frameworks.md) for data-driven decisions
 
 ---
 
@@ -271,6 +285,8 @@ Research → Design → Develop → Test → Launch → Iterate
 
 ### 📦 For Product Managers
 - **Product**: [Development Framework](./10-product/product-development-framework.md)
+- **UX Design**: [User Experience Design](./10-product/user-experience-design.md)
+- **Experimentation**: [A/B Testing Frameworks](./10-product/ab-testing-frameworks.md)
 - **Features**: [Feature Flags](./01-development/feature-flags.md)
 - **Performance**: [Performance Monitoring](./04-scaling-performance/performance.md)
 
