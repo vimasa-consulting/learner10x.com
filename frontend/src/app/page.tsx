@@ -55,25 +55,54 @@ export default function Home() {
         {/* Donation Section */}
         <div className="mt-8 p-6 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg border border-green-200 dark:border-green-800 max-w-2xl">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">
+            <h3 className="text-lg font-semibold text-green-800 dark:text-green-200 mb-4">
               💝 Support the Developer
             </h3>
-            <p className="text-sm text-green-700 dark:text-green-300 mb-4">
-              If this template helps you, consider supporting my work! Get <span className="font-bold text-green-600">₹250</span> when you sign up with Niyo using my referral code.<br/><span className="text-xs mt-1 block">By signing up to Niyo - we both receive value. You can choose to pay me any amount you see fit as a token of appreciation.</span>
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <a
-                className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
-                href="https://ctr.niyo.me/start?utm_campaign_id=WqeSX5gu&utm_source=goniyo_app_referral&utm_campaign=Referral&utm_adgroup=mobile_app&utm_medium=mobile_app_referral&ref_label=HAONZLAQIH"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Get ₹250 + Niyo Card
-              </a>
-              <div className="text-xs text-green-600 dark:text-green-400 flex items-center justify-center">
-                Code: <span className="font-mono ml-1 font-bold">HAONZLAQIH</span>
+            
+            {/* UPI Payment Section */}
+            <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+              <h4 className="text-md font-semibold text-orange-800 dark:text-orange-200 mb-2 flex items-center justify-center gap-2">
+                🇮🇳 UPI Payment (Indian Residents)
+              </h4>
+              <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                Quick & instant payment via any UPI app
+              </p>
+              <div className="bg-white dark:bg-gray-800 p-3 rounded border text-center">
+                <span className="text-xs text-gray-500 dark:text-gray-400">UPI ID:</span>
+                <div className="font-mono font-bold text-lg text-orange-600 dark:text-orange-400">19811866</div>
+              </div>
+              <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                Use GPay, PhonePe, Paytm, BHIM - Any amount you see fit!
+              </p>
+            </div>
+
+            {/* Niyo Section */}
+            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+              <h4 className="text-md font-semibold text-green-800 dark:text-green-200 mb-2">
+                💳 Get ₹250 + Niyo Card
+              </h4>
+              <p className="text-sm text-green-700 dark:text-green-300 mb-4">
+                Sign up with Niyo using my referral code and get <span className="font-bold text-green-600">₹250</span> bonus!
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <a
+                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
+                  href="https://ctr.niyo.me/start?utm_campaign_id=WqeSX5gu&utm_source=goniyo_app_referral&utm_campaign=Referral&utm_adgroup=mobile_app&utm_medium=mobile_app_referral&ref_label=HAONZLAQIH"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Get ₹250 + Niyo Card
+                </a>
+                <div className="text-xs text-green-600 dark:text-green-400 flex items-center justify-center">
+                  Code: <span className="font-mono ml-1 font-bold">HAONZLAQIH</span>
+                </div>
               </div>
             </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+              By supporting this template, you help maintain and improve it for the developer community.
+              Choose any amount based on the value you received!
+            </p>
           </div>
         </div>
       </main>
