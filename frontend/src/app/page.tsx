@@ -59,7 +59,7 @@ export default function Home() {
               💝 Support the Developer
             </h3>
             <p className="text-sm text-green-700 dark:text-green-300 mb-4">
-              If this template helps you, consider supporting my work! Get <span className="font-bold text-green-600">₹250</span> when you sign up with Niyo using my referral code.
+              If this template helps you, consider supporting my work! Get <span className="font-bold text-green-600">₹250</span> when you sign up with Niyo using my referral code.<br/><span className="text-xs mt-1 block">By signing up to Niyo - we both receive value. You can choose to pay me any amount you see fit as a token of appreciation.</span>
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a

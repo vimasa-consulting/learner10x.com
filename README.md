@@ -99,6 +99,8 @@ Hey 👋, I'm here to give you **₹250💰** when you sign up with Niyo using m
 3. Complete your KYC and get your card
 4. **Bonus:** You can also send me donations through Niyo once you're set up!
 
+**Important Note:** By signing up to Niyo itself - we both will receive some value. You can choose to pay me any amount you see fit as a token of appreciation for this template. It's completely optional and based on how much value you found in this resource.
+
 ### 🙏 Why Your Support Matters
 
 - **Open Source Maintenance**: Keep this template updated with latest technologies
