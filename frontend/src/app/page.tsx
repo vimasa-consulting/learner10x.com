@@ -69,7 +69,7 @@ export default function Home() {
               </p>
               <div className="bg-white dark:bg-gray-800 p-3 rounded border text-center">
                 <span className="text-xs text-gray-500 dark:text-gray-400">UPI ID:</span>
-                <div className="font-mono font-bold text-lg text-orange-600 dark:text-orange-400">19811866</div>
+                <div className="font-mono font-bold text-lg text-orange-600 dark:text-orange-400">niranjan.veerasekara@niyoicici</div>
               </div>
               <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
                 Use GPay, PhonePe, Paytm, BHIM - Any amount you see fit!

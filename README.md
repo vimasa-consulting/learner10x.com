@@ -92,13 +92,13 @@ If this template helps you build amazing applications, consider supporting my wo
 **Quick & Easy UPI Payment for Indians** 🇮🇳
 
 Send your support directly via UPI:
-- **UPI ID**: `19811866`
+- **UPI ID**: `niranjan.veerasekara@niyoicici`
 - **Payment Apps**: Google Pay, PhonePe, Paytm, BHIM, or any UPI app
 - **Amount**: Any amount you see fit based on the value you received
 
 **How to pay via UPI:**
 1. Open your preferred UPI app (GPay, PhonePe, Paytm, etc.)
-2. Send money to UPI ID: **19811866**
+2. Send money to UPI ID: **niranjan.veerasekara@niyoicici**
 3. Add a note: "Fullstack Template Support"
 4. Send any amount you feel the template is worth!
 
