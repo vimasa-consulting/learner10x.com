@@ -5,6 +5,7 @@ import Footer from '@/components/Footer'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import AnalyticsProvider from '@/components/AnalyticsProvider'
+import ChakraProvider from '@/components/ChakraProvider'
 import { Suspense } from 'react'
 import '@/styles/globals.css'
 
@@ -246,35 +247,37 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className={`${inter.className} antialiased`}>
-        <AnalyticsProvider>
-          <ErrorBoundary>
-            <div className="flex flex-col min-h-screen">
-              <ErrorBoundary fallback={<div className="h-16 bg-white border-b border-gray-200 animate-pulse"></div>}>
-                <Suspense fallback={<div className="h-16 bg-white border-b border-gray-200 animate-pulse"></div>}>
-                  <Navigation />
-                </Suspense>
-              </ErrorBoundary>
-              
-              <main className="flex-1">
-                <ErrorBoundary>
-                  <Suspense fallback={
-                    <div className="flex items-center justify-center min-h-screen">
-                      <LoadingSpinner />
-                    </div>
-                  }>
-                    {children}
+        <ChakraProvider>
+          <AnalyticsProvider>
+            <ErrorBoundary>
+              <div className="flex flex-col min-h-screen">
+                <ErrorBoundary fallback={<div className="h-16 bg-white border-b border-gray-200 animate-pulse"></div>}>
+                  <Suspense fallback={<div className="h-16 bg-white border-b border-gray-200 animate-pulse"></div>}>
+                    <Navigation />
                   </Suspense>
                 </ErrorBoundary>
-              </main>
-              
-              <ErrorBoundary fallback={<div className="h-64 bg-gray-900 animate-pulse"></div>}>
-                <Suspense fallback={<div className="h-64 bg-gray-900 animate-pulse"></div>}>
-                  <Footer />
-                </Suspense>
-              </ErrorBoundary>
-            </div>
-          </ErrorBoundary>
-        </AnalyticsProvider>
+                
+                <main className="flex-1">
+                  <ErrorBoundary>
+                    <Suspense fallback={
+                      <div className="flex items-center justify-center min-h-screen">
+                        <LoadingSpinner />
+                      </div>
+                    }>
+                      {children}
+                    </Suspense>
+                  </ErrorBoundary>
+                </main>
+                
+                <ErrorBoundary fallback={<div className="h-64 bg-gray-900 animate-pulse"></div>}>
+                  <Suspense fallback={<div className="h-64 bg-gray-900 animate-pulse"></div>}>
+                    <Footer />
+                  </Suspense>
+                </ErrorBoundary>
+              </div>
+            </ErrorBoundary>
+          </AnalyticsProvider>
+        </ChakraProvider>
       </body>
     </html>
   )
