@@ -241,10 +241,10 @@ export async function sanitizeRequest(
 
     // Sanitize URL parameters
     const url = new URL(request.url);
-    for (const [key, value] of url.searchParams.entries()) {
+    url.searchParams.forEach((value, key) => {
       const result = sanitizeString(value, config);
       threats.push(...result.threats);
-    }
+    });
 
     // Sanitize headers
     const dangerousHeaders = ['x-forwarded-for', 'user-agent', 'referer'];
@@ -267,7 +267,8 @@ export async function sanitizeRequest(
           threats.push(...result.threats);
         } else if (contentType.includes('application/x-www-form-urlencoded')) {
           const formData = await request.clone().formData();
-          for (const [key, value] of formData.entries()) {
+          for (const entry of Array.from(formData.entries())) {
+            const [key, value] = entry;
             if (typeof value === 'string') {
               const result = sanitizeString(value, config);
               threats.push(...result.threats);
@@ -278,7 +279,8 @@ export async function sanitizeRequest(
           }
         } else if (contentType.includes('multipart/form-data')) {
           const formData = await request.clone().formData();
-          for (const [key, value] of formData.entries()) {
+          for (const entry of Array.from(formData.entries())) {
+            const [key, value] = entry;
             if (typeof value === 'string') {
               const result = sanitizeString(value, config);
               threats.push(...result.threats);
@@ -296,7 +298,7 @@ export async function sanitizeRequest(
 
     return {
       safe: threats.length === 0,
-      threats: [...new Set(threats)], // Remove duplicates
+      threats: Array.from(new Set(threats)), // Remove duplicates
     };
 
   } catch (error) {
