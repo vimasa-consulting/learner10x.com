@@ -230,6 +230,7 @@ npm install @chakra-ui/react @chakra-ui/next-js @emotion/react @emotion/styled f
 - ✅ Supabase backend setup
 - ✅ Email/password authentication
 - ✅ Development environment ready
+- 📋 **GitHub Authentication**: Dev needs to log into GitHub CLI for repository management
 
 ### **Ana (Analytics Specialist) - ✅ COMPLETED**
 - ✅ Google Analytics 4 setup
@@ -248,4 +249,4 @@ npm install @chakra-ui/react @chakra-ui/next-js @emotion/react @emotion/styled f
 
 ---
 
-**Status**: ✅ **GTM INTEGRATION COMPLETE** - Dev, Ana, and Frontend team have completed their setups. Ana needs to provide GTM ID for final testing. 
+**Status**: ✅ **GTM INTEGRATION COMPLETE** - Dev, Ana, and Frontend team have completed their setups. Dev needs to handle GitHub authentication, Ana needs to provide GTM ID for final testing. 

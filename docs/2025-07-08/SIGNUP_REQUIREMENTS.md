@@ -387,6 +387,7 @@ This document lists all **essential** services in our chosen tech stack that req
 - ✅ Supabase backend setup
 - ✅ Email/password authentication
 - ✅ Development environment ready
+- 📋 **GitHub Authentication**: Dev needs to log into GitHub CLI for repository management
 
 ### **Ana (Analytics Specialist) - ✅ COMPLETED**
 - ✅ Google Analytics 4 setup
@@ -402,4 +403,4 @@ This document lists all **essential** services in our chosen tech stack that req
 
 ---
 
-**Status**: ✅ **INFRASTRUCTURE & ANALYTICS SETUP COMPLETE** - Dev and Ana have completed their setups. Ready for frontend team to implement GTM integration. 
+**Status**: ✅ **INFRASTRUCTURE & ANALYTICS SETUP COMPLETE** - Dev and Ana have completed their setups. Dev needs to handle GitHub authentication, ready for frontend team to implement GTM integration. 
