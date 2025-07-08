@@ -24,18 +24,18 @@ Ana has completed the GTM and GA4 setup. This guide provides the frontend team w
 
 ### **1. Environment Variables**
 
-Ana needs to provide the GTM container ID. Create a `.env.local` file with:
+Ana has provided the GTM container ID. Create a `.env.local` file with:
 
 ```bash
 # Google Tag Manager Configuration
-# Ana will provide the actual GTM ID from her GTM setup
-NEXT_PUBLIC_GTM_ID=GTM-XXXXXXX
+# Ana's GTM container ID
+NEXT_PUBLIC_GTM_ID=GTM-WWQDL3WW
 
 # Enable GTM in development (set to 'true' to enable)
-NEXT_PUBLIC_ENABLE_GTM=false
+NEXT_PUBLIC_ENABLE_GTM=true
 ```
 
-**Ana's Task**: Replace `GTM-XXXXXXX` with the actual GTM container ID.
+**Ana's Task**: ✅ **COMPLETED** - GTM ID `GTM-WWQDL3WW` provided.
 
 ### **2. GTM Integration Status**
 
@@ -48,6 +48,7 @@ The frontend team has already implemented:
 - ✅ **Error Tracking**: JavaScript error tracking
 - ✅ **Scroll Tracking**: Scroll depth tracking
 - ✅ **Layout Integration**: GTM provider integrated into layout
+- ✅ **GTM ID Integration**: Updated with Ana's GTM ID
 
 ---
 

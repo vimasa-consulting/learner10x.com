@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { usePathname } from 'next/navigation'
 
 // GTM Configuration
-const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID || 'GTM-XXXXXXX' // Ana will provide the actual GTM ID
+const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID || 'GTM-WWQDL3WW' // Ana's GTM container ID
 const ENABLE_GTM = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_GTM === 'true'
 
 // Data Layer Type
@@ -157,7 +157,7 @@ export function GTMProvider({ children }: GTMProviderProps) {
 
     // Track Core Web Vitals
     import('web-vitals').then((webVitals) => {
-      const { getCLS, getFID, getFCP, getLCP, getTTFB } = webVitals
+      const { getCLS, getFID, getFCP, getLCP, getTTFB } = webVitals as any
       
       getCLS((metric: any) => {
         trackEvent('web_vitals', {
