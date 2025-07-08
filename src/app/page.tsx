@@ -1,6 +1,9 @@
 import React from 'react'
 import type { Metadata } from 'next'
 import StructuredData from '@/components/StructuredData'
+import Link from 'next/link'
+import { ArrowRight, BookOpen, Users, Target, TrendingUp } from 'lucide-react'
+import SearchBox from '@/components/SearchBox'
 
 export const metadata: Metadata = {
   title: 'Master Production-Ready Skills Through Battle-Tested Content',
@@ -66,6 +69,14 @@ export default function HomePage() {
                 Access <strong className="text-primary-600">400,000+ words</strong> of actionable technical education. 
                 Learn from <strong className="text-secondary-800">real-world implementations</strong> that power enterprise-scale systems.
               </p>
+              
+              {/* Search Box */}
+              <div className="max-w-2xl mx-auto mb-8">
+                <SearchBox 
+                  placeholder="Search for guides, technologies, or topics..."
+                  className="w-full"
+                />
+              </div>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
                 <button className="btn-primary text-lg px-8 py-4 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all">
