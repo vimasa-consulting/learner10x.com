@@ -1,0 +1,1226 @@
+---
+title: "DevOps Practices and CI/CD Guide"
+description: "Master DevOps practices, CI/CD pipelines, and infrastructure automation. Learn deployment strategies, monitoring, and scalable infrastructure management for reliable software delivery."
+category: "devops"
+tags: ["devops", "ci-cd", "infrastructure-as-code", "docker", "kubernetes", "monitoring", "deployment", "automation"]
+publishedAt: "2024-01-21"
+difficulty: "advanced"
+externalLinks:
+  - title: "The DevOps Handbook"
+    url: "https://itrevolution.com/the-devops-handbook/"
+    description: "Comprehensive guide to DevOps practices"
+    category: "books"
+  - title: "Kubernetes Documentation"
+    url: "https://kubernetes.io/docs/"
+    description: "Official Kubernetes documentation"
+    category: "documentation"
+  - title: "GitHub Actions"
+    url: "https://docs.github.com/en/actions"
+    description: "CI/CD with GitHub Actions"
+    category: "tools"
+  - title: "Terraform Documentation"
+    url: "https://www.terraform.io/docs/"
+    description: "Infrastructure as Code with Terraform"
+    category: "tools"
+  - title: "Prometheus Monitoring"
+    url: "https://prometheus.io/docs/"
+    description: "Modern monitoring and alerting"
+    category: "tools"
+relatedGuides: ["testing-strategies-guide", "web-performance-optimization-guide"]
+---
+
+# DevOps Practices and CI/CD Guide
+
+Build reliable, scalable software delivery pipelines with modern DevOps practices. Master CI/CD automation, infrastructure as code, and production monitoring to deliver features faster with higher quality.
+
+## Introduction
+
+DevOps practices enable:
+
+- **Faster Delivery**: Automated pipelines reduce deployment time from days to minutes
+- **Higher Quality**: Automated testing and validation prevent bugs in production
+- **Reliability**: Infrastructure as code ensures consistent, repeatable deployments
+- **Scalability**: Container orchestration handles varying loads automatically
+- **Visibility**: Comprehensive monitoring provides insights into system health
+
+<Callout type="info">
+Organizations implementing DevOps practices see 200x more frequent deployments, 24x faster recovery times, and 3x lower change failure rates.
+</Callout>
+
+## CI/CD Pipeline Implementation
+
+### GitHub Actions Workflows
+
+```yaml
+# .github/workflows/ci-cd.yml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '18'
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Run unit tests
+        run: npm run test:unit
+        env:
+          NODE_ENV: test
+
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+
+      - name: Generate test coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run npm audit
+        run: npm audit --audit-level high
+
+      - name: Run OWASP ZAP security scan
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: zaproxy/action-full-scan@v0.7.0
+        with:
+          target: 'http://localhost:3000'
+
+  build:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    needs: [test, security-scan]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name staging-cluster --region us-west-2
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/app app=${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:main-${{ github.sha }} -n staging
+          kubectl rollout status deployment/app -n staging --timeout=300s
+
+      - name: Run smoke tests
+        run: |
+          npm run test:smoke
+        env:
+          API_URL: https://staging-api.example.com
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name production-cluster --region us-west-2
+
+      - name: Blue-Green Deployment
+        run: |
+          # Deploy to green environment
+          kubectl set image deployment/app-green app=${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:main-${{ github.sha }} -n production
+          kubectl rollout status deployment/app-green -n production --timeout=300s
+          
+          # Run health checks
+          kubectl run health-check --image=curlimages/curl --rm -i --restart=Never -- \
+            curl -f http://app-green-service.production.svc.cluster.local:3000/health
+          
+          # Switch traffic to green
+          kubectl patch service app-service -p '{"spec":{"selector":{"version":"green"}}}' -n production
+          
+          # Scale down blue deployment
+          kubectl scale deployment app-blue --replicas=0 -n production
+
+      - name: Post-deployment tests
+        run: |
+          npm run test:production
+        env:
+          API_URL: https://api.example.com
+```
+
+### Multi-Stage Dockerfile
+
+```dockerfile
+# Multi-stage Dockerfile for optimized production builds
+FROM node:18-alpine AS base
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Development stage
+FROM base AS development
+RUN npm ci
+COPY . .
+CMD ["npm", "run", "dev"]
+
+# Build stage
+FROM base AS build
+RUN npm ci
+COPY . .
+RUN npm run build && npm prune --production
+
+# Production stage
+FROM node:18-alpine AS production
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy built application
+COPY --from=build --chown=nextjs:nodejs /app/dist ./dist
+COPY --from=build --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=nextjs:nodejs /app/package*.json ./
+
+# Install security updates
+RUN apk update && apk upgrade && apk add --no-cache dumb-init
+
+# Use non-root user
+USER nextjs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Start application
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/server.js"]
+
+# Labels for metadata
+LABEL maintainer="team@example.com"
+LABEL version="1.0.0"
+LABEL description="Production-ready Node.js application"
+```
+
+## Infrastructure as Code
+
+### Terraform Configuration
+
+```hcl
+# terraform/main.tf
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.20"
+    }
+  }
+
+  backend "s3" {
+    bucket = "terraform-state-bucket"
+    key    = "infrastructure/terraform.tfstate"
+    region = "us-west-2"
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+  
+  default_tags {
+    tags = {
+      Environment = var.environment
+      Project     = var.project_name
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
+# VPC Configuration
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+  version = "~> 5.0"
+
+  name = "${var.project_name}-${var.environment}-vpc"
+  cidr = var.vpc_cidr
+
+  azs             = var.availability_zones
+  private_subnets = var.private_subnet_cidrs
+  public_subnets  = var.public_subnet_cidrs
+
+  enable_nat_gateway = true
+  enable_vpn_gateway = false
+  enable_dns_hostnames = true
+  enable_dns_support = true
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-vpc"
+  }
+}
+
+# EKS Cluster
+module "eks" {
+  source = "terraform-aws-modules/eks/aws"
+  version = "~> 19.0"
+
+  cluster_name    = "${var.project_name}-${var.environment}-cluster"
+  cluster_version = var.kubernetes_version
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnets
+
+  # Cluster access
+  cluster_endpoint_public_access  = true
+  cluster_endpoint_private_access = true
+  cluster_endpoint_public_access_cidrs = var.allowed_cidr_blocks
+
+  # Node groups
+  eks_managed_node_groups = {
+    main = {
+      min_size       = var.node_group_min_size
+      max_size       = var.node_group_max_size
+      desired_size   = var.node_group_desired_size
+      instance_types = var.node_instance_types
+
+      k8s_labels = {
+        Environment = var.environment
+        Application = var.project_name
+      }
+
+      tags = {
+        Environment = var.environment
+      }
+    }
+  }
+
+  # Cluster security group
+  cluster_security_group_additional_rules = {
+    ingress_nodes_ephemeral_ports_tcp = {
+      description                = "Nodes on ephemeral ports"
+      protocol                   = "tcp"
+      from_port                  = 1025
+      to_port                    = 65535
+      type                       = "ingress"
+      source_node_security_group = true
+    }
+  }
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-eks"
+  }
+}
+
+# RDS Database
+resource "aws_db_instance" "main" {
+  identifier = "${var.project_name}-${var.environment}-db"
+
+  engine         = "postgres"
+  engine_version = var.postgres_version
+  instance_class = var.db_instance_class
+
+  allocated_storage     = var.db_allocated_storage
+  max_allocated_storage = var.db_max_allocated_storage
+  storage_type         = "gp3"
+  storage_encrypted    = true
+
+  db_name  = var.database_name
+  username = var.database_username
+  password = var.database_password
+
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+
+  backup_retention_period = var.backup_retention_period
+  backup_window          = "03:00-04:00"
+  maintenance_window     = "sun:04:00-sun:05:00"
+
+  skip_final_snapshot = var.environment != "production"
+  deletion_protection = var.environment == "production"
+
+  performance_insights_enabled = true
+  monitoring_interval         = 60
+  monitoring_role_arn        = aws_iam_role.rds_monitoring.arn
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-db"
+  }
+}
+
+# ElastiCache Redis
+resource "aws_elasticache_subnet_group" "main" {
+  name       = "${var.project_name}-${var.environment}-cache-subnet"
+  subnet_ids = module.vpc.private_subnets
+}
+
+resource "aws_elasticache_replication_group" "main" {
+  replication_group_id       = "${var.project_name}-${var.environment}-redis"
+  description               = "Redis cluster for ${var.project_name} ${var.environment}"
+
+  node_type = var.redis_node_type
+  port      = 6379
+
+  num_cache_clusters = var.redis_num_cache_nodes
+
+  subnet_group_name  = aws_elasticache_subnet_group.main.name
+  security_group_ids = [aws_security_group.redis.id]
+
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+  auth_token                 = var.redis_auth_token
+
+  snapshot_retention_limit = var.redis_snapshot_retention_limit
+  snapshot_window         = "03:00-05:00"
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-redis"
+  }
+}
+
+# Load Balancer
+resource "aws_lb" "main" {
+  name               = "${var.project_name}-${var.environment}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = module.vpc.public_subnets
+
+  enable_deletion_protection = var.environment == "production"
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-alb"
+  }
+}
+```
+
+### Kubernetes Manifests
+
+```yaml
+# k8s/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-production
+  labels:
+    name: app-production
+    environment: production
+
+---
+# k8s/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: app-production
+data:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  PORT: "3000"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+
+---
+# k8s/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: app-production
+type: Opaque
+stringData:
+  DATABASE_URL: "postgresql://user:password@postgres-service:5432/myapp"
+  JWT_SECRET: "your-jwt-secret"
+  REDIS_PASSWORD: "your-redis-password"
+
+---
+# k8s/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deployment
+  namespace: app-production
+  labels:
+    app: myapp
+    version: blue
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: myapp
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: myapp
+        version: blue
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: app-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      - name: app
+        image: ghcr.io/company/myapp:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: NODE_ENV
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: DATABASE_URL
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: REDIS_PASSWORD
+        envFrom:
+        - configMapRef:
+            name: app-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /app/cache
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir:
+          sizeLimit: 1Gi
+
+---
+# k8s/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-service
+  namespace: app-production
+  labels:
+    app: myapp
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: myapp
+    version: blue
+
+---
+# k8s/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: app-hpa
+  namespace: app-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: app-deployment
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+
+---
+# k8s/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: app-production
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - api.example.com
+    secretName: api-tls
+  rules:
+  - host: api.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app-service
+            port:
+              number: 80
+```
+
+## Monitoring and Observability
+
+### Prometheus and Grafana Setup
+
+```yaml
+# monitoring/prometheus-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    rule_files:
+      - "/etc/prometheus/rules/*.yml"
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              - alertmanager:9093
+
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      - job_name: 'kubernetes-apiservers'
+        kubernetes_sd_configs:
+        - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+          action: keep
+          regex: default;kubernetes;https
+
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+        - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+        - action: labelmap
+          regex: __meta_kubernetes_node_label_(.+)
+
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+          action: keep
+          regex: true
+        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+          action: replace
+          target_label: __metrics_path__
+          regex: (.+)
+        - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+          action: replace
+          regex: ([^:]+)(?::\d+)?;(\d+)
+          replacement: $1:$2
+          target_label: __address__
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+        - source_labels: [__meta_kubernetes_namespace]
+          action: replace
+          target_label: kubernetes_namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          action: replace
+          target_label: kubernetes_pod_name
+
+---
+# monitoring/alerting-rules.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+data:
+  application.yml: |
+    groups:
+    - name: application
+      rules:
+      - alert: HighErrorRate
+        expr: (rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} for {{ $labels.instance }}"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s for {{ $labels.instance }}"
+
+      - alert: PodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pod is crash looping"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is crash looping"
+
+      - alert: DeploymentReplicasMismatch
+        expr: kube_deployment_status_replicas != kube_deployment_spec_replicas
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Deployment replicas mismatch"
+          description: "Deployment {{ $labels.deployment }} has {{ $value }} replicas but should have {{ $labels.spec_replicas }}"
+```
+
+### Application Metrics and Logging
+
+```typescript
+// Application metrics with Prometheus
+import prometheus from 'prom-client';
+
+// Create metrics registry
+const register = prometheus.register;
+
+// HTTP request metrics
+const httpRequestDuration = new prometheus.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request duration in seconds',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+});
+
+const httpRequestsTotal = new prometheus.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status_code']
+});
+
+// Business metrics
+const ordersCreated = new prometheus.Counter({
+  name: 'orders_created_total',
+  help: 'Total number of orders created',
+  labelNames: ['customer_type']
+});
+
+const orderValue = new prometheus.Histogram({
+  name: 'order_value_dollars',
+  help: 'Order value in dollars',
+  buckets: [10, 25, 50, 100, 250, 500, 1000, 2500, 5000]
+});
+
+// Database connection pool metrics
+const dbConnections = new prometheus.Gauge({
+  name: 'database_connections_active',
+  help: 'Number of active database connections'
+});
+
+const dbQueriesDuration = new prometheus.Histogram({
+  name: 'database_query_duration_seconds',
+  help: 'Database query duration in seconds',
+  labelNames: ['query_type'],
+  buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5]
+});
+
+// Middleware for HTTP metrics
+export function metricsMiddleware() {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const start = Date.now();
+    
+    res.on('finish', () => {
+      const duration = (Date.now() - start) / 1000;
+      const route = req.route?.path || req.path;
+      
+      httpRequestDuration
+        .labels(req.method, route, res.statusCode.toString())
+        .observe(duration);
+        
+      httpRequestsTotal
+        .labels(req.method, route, res.statusCode.toString())
+        .inc();
+    });
+    
+    next();
+  };
+}
+
+// Structured logging with Winston
+import winston from 'winston';
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: {
+    service: 'myapp',
+    version: process.env.APP_VERSION,
+    environment: process.env.NODE_ENV
+  },
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ 
+      filename: 'error.log', 
+      level: 'error' 
+    }),
+    new winston.transports.File({ 
+      filename: 'combined.log' 
+    })
+  ]
+});
+
+// Business metrics tracking
+class MetricsCollector {
+  static recordOrderCreated(orderValue: number, customerType: string): void {
+    ordersCreated.labels(customerType).inc();
+    orderValue.observe(orderValue);
+    
+    logger.info('Order created', {
+      orderValue,
+      customerType,
+      metric: 'order_created'
+    });
+  }
+
+  static recordDatabaseQuery(queryType: string, duration: number): void {
+    dbQueriesDuration.labels(queryType).observe(duration);
+    
+    if (duration > 1) {
+      logger.warn('Slow database query detected', {
+        queryType,
+        duration,
+        metric: 'slow_query'
+      });
+    }
+  }
+
+  static updateConnectionPoolMetrics(activeConnections: number): void {
+    dbConnections.set(activeConnections);
+  }
+}
+
+// Health check endpoint
+export function createHealthCheck(dependencies: HealthCheckDependency[]) {
+  return async (req: Request, res: Response) => {
+    const checks = await Promise.allSettled(
+      dependencies.map(async (dep) => {
+        const start = Date.now();
+        try {
+          await dep.check();
+          return {
+            name: dep.name,
+            status: 'healthy',
+            responseTime: Date.now() - start
+          };
+        } catch (error) {
+          return {
+            name: dep.name,
+            status: 'unhealthy',
+            error: error.message,
+            responseTime: Date.now() - start
+          };
+        }
+      })
+    );
+
+    const results = checks.map(check => 
+      check.status === 'fulfilled' ? check.value : check.reason
+    );
+
+    const isHealthy = results.every(result => result.status === 'healthy');
+    
+    res.status(isHealthy ? 200 : 503).json({
+      status: isHealthy ? 'healthy' : 'unhealthy',
+      timestamp: new Date().toISOString(),
+      checks: results
+    });
+  };
+}
+
+interface HealthCheckDependency {
+  name: string;
+  check: () => Promise<void>;
+}
+```
+
+## Deployment Strategies
+
+### Blue-Green Deployment
+
+```bash
+#!/bin/bash
+# scripts/blue-green-deploy.sh
+
+set -e
+
+NAMESPACE="production"
+APP_NAME="myapp"
+NEW_IMAGE="$1"
+TIMEOUT=300
+
+if [ -z "$NEW_IMAGE" ]; then
+    echo "Usage: $0 <new-image>"
+    exit 1
+fi
+
+echo "Starting blue-green deployment..."
+echo "New image: $NEW_IMAGE"
+
+# Determine current active deployment
+CURRENT_COLOR=$(kubectl get service $APP_NAME-service -n $NAMESPACE -o jsonpath='{.spec.selector.version}')
+if [ "$CURRENT_COLOR" = "blue" ]; then
+    NEW_COLOR="green"
+else
+    NEW_COLOR="blue"
+fi
+
+echo "Current active: $CURRENT_COLOR"
+echo "Deploying to: $NEW_COLOR"
+
+# Update the inactive deployment
+echo "Updating $NEW_COLOR deployment..."
+kubectl set image deployment/$APP_NAME-$NEW_COLOR app=$NEW_IMAGE -n $NAMESPACE
+
+# Wait for rollout to complete
+echo "Waiting for $NEW_COLOR deployment to be ready..."
+kubectl rollout status deployment/$APP_NAME-$NEW_COLOR -n $NAMESPACE --timeout=${TIMEOUT}s
+
+# Run health checks
+echo "Running health checks on $NEW_COLOR deployment..."
+HEALTH_CHECK_URL="http://$APP_NAME-$NEW_COLOR-service.$NAMESPACE.svc.cluster.local/health"
+
+for i in {1..10}; do
+    if kubectl run health-check-$i --image=curlimages/curl --rm -i --restart=Never -n $NAMESPACE -- \
+        curl -f $HEALTH_CHECK_URL; then
+        echo "Health check $i passed"
+    else
+        echo "Health check $i failed"
+        exit 1
+    fi
+    sleep 5
+done
+
+# Switch traffic to new deployment
+echo "Switching traffic to $NEW_COLOR deployment..."
+kubectl patch service $APP_NAME-service -p "{\"spec\":{\"selector\":{\"version\":\"$NEW_COLOR\"}}}" -n $NAMESPACE
+
+# Wait a bit for traffic to switch
+sleep 10
+
+# Run production smoke tests
+echo "Running production smoke tests..."
+npm run test:smoke:production
+
+# Scale down old deployment
+echo "Scaling down $CURRENT_COLOR deployment..."
+kubectl scale deployment $APP_NAME-$CURRENT_COLOR --replicas=0 -n $NAMESPACE
+
+echo "Blue-green deployment completed successfully!"
+echo "Active deployment: $NEW_COLOR"
+```
+
+### Canary Deployment with Istio
+
+```yaml
+# canary/virtual-service.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: myapp-vs
+  namespace: production
+spec:
+  hosts:
+  - api.example.com
+  gateways:
+  - myapp-gateway
+  http:
+  - match:
+    - headers:
+        canary:
+          exact: "true"
+    route:
+    - destination:
+        host: myapp-service
+        subset: canary
+      weight: 100
+  - route:
+    - destination:
+        host: myapp-service
+        subset: stable
+      weight: 90
+    - destination:
+        host: myapp-service
+        subset: canary
+      weight: 10
+
+---
+# canary/destination-rule.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: myapp-dr
+  namespace: production
+spec:
+  host: myapp-service
+  subsets:
+  - name: stable
+    labels:
+      version: stable
+  - name: canary
+    labels:
+      version: canary
+```
+
+## Production Implementation Checklist
+
+- [ ] **CI/CD Pipeline**: Automated testing, building, and deployment
+- [ ] **Infrastructure as Code**: Versioned, repeatable infrastructure
+- [ ] **Container Security**: Vulnerability scanning and minimal base images
+- [ ] **Secrets Management**: Encrypted secrets and rotation policies
+- [ ] **Monitoring**: Comprehensive metrics, logging, and alerting
+- [ ] **Backup Strategy**: Automated backups and disaster recovery
+- [ ] **Performance Testing**: Load testing in CI/CD pipeline
+- [ ] **Security Testing**: Automated security scanning and penetration testing
+- [ ] **Documentation**: Runbooks, architecture diagrams, and incident procedures
+- [ ] **Incident Response**: On-call rotation and incident management processes
+
+<Callout type="success">
+Organizations implementing DevOps practices see 200x more frequent deployments, 24x faster recovery times, and 3x lower change failure rates.
+</Callout>
+
+---
+
+*Implement our complete [DevOps Framework](https://github.com/vimasa-consulting/devops-framework) for reliable, scalable software delivery.* 

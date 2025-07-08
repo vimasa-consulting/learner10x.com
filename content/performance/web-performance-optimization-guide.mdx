@@ -1,0 +1,1081 @@
+---
+title: "Web Performance Optimization Guide"
+description: "Master web performance optimization techniques for faster loading times and better user experience. Learn Core Web Vitals, caching strategies, and performance monitoring."
+category: "performance"
+tags: ["web-performance", "core-web-vitals", "optimization", "caching", "lazy-loading", "cdn", "compression", "performance-monitoring"]
+publishedAt: "2024-01-19"
+difficulty: "intermediate"
+externalLinks:
+  - title: "Core Web Vitals Guide"
+    url: "https://web.dev/vitals/"
+    description: "Google's guide to Core Web Vitals"
+    category: "documentation"
+  - title: "High Performance Browser Networking"
+    url: "https://hpbn.co/"
+    description: "Comprehensive guide to web performance"
+    category: "books"
+  - title: "WebPageTest"
+    url: "https://www.webpagetest.org/"
+    description: "Web performance testing tool"
+    category: "tools"
+  - title: "Lighthouse"
+    url: "https://developers.google.com/web/tools/lighthouse"
+    description: "Google's web performance auditing tool"
+    category: "tools"
+  - title: "Performance Budget Calculator"
+    url: "https://www.performancebudget.io/"
+    description: "Tool for setting performance budgets"
+    category: "tools"
+relatedGuides: ["testing-strategies-guide", "devops-practices-guide"]
+---
+
+# Web Performance Optimization Guide
+
+Optimize web applications for speed, efficiency, and exceptional user experience. Master Core Web Vitals, implement advanced caching strategies, and build performance monitoring systems that deliver sub-second loading times.
+
+## Introduction
+
+Web performance directly impacts:
+
+- **User Experience**: Faster sites have higher engagement and conversion rates
+- **SEO Rankings**: Core Web Vitals are now Google ranking factors
+- **Business Metrics**: 100ms improvement can increase conversions by 1-3%
+- **Accessibility**: Performance is a key accessibility factor
+- **Mobile Experience**: Critical for mobile-first users on slower networks
+
+<Callout type="info">
+Studies show that 53% of mobile users abandon sites that take longer than 3 seconds to load, and a 1-second delay can reduce conversions by 7%.
+</Callout>
+
+## Core Web Vitals Optimization
+
+### Largest Contentful Paint (LCP)
+
+```typescript
+// LCP Optimization Strategies
+class LCPOptimizer {
+  // 1. Optimize Critical Resource Loading
+  static preloadCriticalResources(): void {
+    // Preload hero images
+    const heroImage = document.createElement('link');
+    heroImage.rel = 'preload';
+    heroImage.as = 'image';
+    heroImage.href = '/images/hero-banner.webp';
+    heroImage.imageSrcset = '/images/hero-banner-mobile.webp 480w, /images/hero-banner.webp 1024w';
+    heroImage.imageSizes = '(max-width: 480px) 480px, 1024px';
+    document.head.appendChild(heroImage);
+
+    // Preload critical fonts
+    const criticalFont = document.createElement('link');
+    criticalFont.rel = 'preload';
+    criticalFont.as = 'font';
+    criticalFont.type = 'font/woff2';
+    criticalFont.href = '/fonts/Inter-Regular.woff2';
+    criticalFont.crossOrigin = 'anonymous';
+    document.head.appendChild(criticalFont);
+  }
+
+  // 2. Implement Progressive Image Loading
+  static implementProgressiveImageLoading(): void {
+    const images = document.querySelectorAll('img[data-src]');
+    
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target as HTMLImageElement;
+          
+          // Create low-quality placeholder
+          const placeholder = new Image();
+          placeholder.src = this.generatePlaceholder(img.dataset.src!);
+          placeholder.className = 'placeholder-blur';
+          
+          // Load high-quality image
+          const highQualityImg = new Image();
+          highQualityImg.onload = () => {
+            img.src = highQualityImg.src;
+            img.classList.add('loaded');
+            img.classList.remove('placeholder-blur');
+          };
+          highQualityImg.src = img.dataset.src!;
+          
+          observer.unobserve(img);
+        }
+      });
+    }, {
+      rootMargin: '50px 0px',
+      threshold: 0.01
+    });
+
+    images.forEach(img => imageObserver.observe(img));
+  }
+
+  // 3. Optimize Above-the-Fold Content
+  static optimizeAboveFoldContent(): void {
+    // Critical CSS inlining
+    const criticalCSS = `
+      .hero { display: flex; align-items: center; min-height: 100vh; }
+      .hero-title { font-size: 3rem; font-weight: 700; }
+      .hero-image { width: 100%; height: auto; object-fit: cover; }
+    `;
+    
+    const style = document.createElement('style');
+    style.textContent = criticalCSS;
+    document.head.appendChild(style);
+
+    // Defer non-critical CSS
+    const nonCriticalCSS = document.createElement('link');
+    nonCriticalCSS.rel = 'preload';
+    nonCriticalCSS.as = 'style';
+    nonCriticalCSS.href = '/css/non-critical.css';
+    nonCriticalCSS.onload = function() {
+      this.rel = 'stylesheet';
+    };
+    document.head.appendChild(nonCriticalCSS);
+  }
+
+  private static generatePlaceholder(src: string): string {
+    // Generate blur placeholder using canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 10;
+    canvas.height = 10;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Create gradient placeholder
+    const gradient = ctx.createLinearGradient(0, 0, 10, 10);
+    gradient.addColorStop(0, '#f0f0f0');
+    gradient.addColorStop(1, '#e0e0e0');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 10, 10);
+    
+    return canvas.toDataURL();
+  }
+}
+
+// Resource Hints Implementation
+class ResourceHints {
+  static implementResourceHints(): void {
+    // DNS Prefetch for external domains
+    this.addDNSPrefetch('https://fonts.googleapis.com');
+    this.addDNSPrefetch('https://cdn.jsdelivr.net');
+    this.addDNSPrefetch('https://api.analytics.com');
+
+    // Preconnect to critical third-parties
+    this.addPreconnect('https://fonts.gstatic.com', true);
+    this.addPreconnect('https://cdn.example.com', true);
+
+    // Prefetch likely next pages
+    this.addPrefetch('/about');
+    this.addPrefetch('/products');
+    
+    // Preload critical resources
+    this.addPreload('/js/critical.js', 'script');
+    this.addPreload('/css/above-fold.css', 'style');
+  }
+
+  private static addDNSPrefetch(href: string): void {
+    const link = document.createElement('link');
+    link.rel = 'dns-prefetch';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
+  private static addPreconnect(href: string, crossorigin: boolean = false): void {
+    const link = document.createElement('link');
+    link.rel = 'preconnect';
+    link.href = href;
+    if (crossorigin) link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+
+  private static addPrefetch(href: string): void {
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
+  private static addPreload(href: string, as: string): void {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.href = href;
+    link.as = as;
+    document.head.appendChild(link);
+  }
+}
+```
+
+### First Input Delay (FID) Optimization
+
+```typescript
+// FID Optimization through Code Splitting and Lazy Loading
+class FIDOptimizer {
+  // 1. Implement Code Splitting
+  static async loadComponentLazily(componentName: string): Promise<any> {
+    const componentMap: Record<string, () => Promise<any>> = {
+      'ProductGrid': () => import('./components/ProductGrid'),
+      'UserDashboard': () => import('./components/UserDashboard'),
+      'CheckoutForm': () => import('./components/CheckoutForm'),
+      'ReviewsSection': () => import('./components/ReviewsSection')
+    };
+
+    const loadComponent = componentMap[componentName];
+    if (!loadComponent) {
+      throw new Error(`Component ${componentName} not found`);
+    }
+
+    try {
+      const module = await loadComponent();
+      return module.default || module;
+    } catch (error) {
+      console.error(`Failed to load component ${componentName}:`, error);
+      // Return fallback component
+      return () => '<div>Component temporarily unavailable</div>';
+    }
+  }
+
+  // 2. Break Up Long Tasks
+  static async processLargeDataset(data: any[], processor: (item: any) => void): Promise<void> {
+    const CHUNK_SIZE = 50;
+    const YIELD_INTERVAL = 5; // ms
+
+    for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+      const chunk = data.slice(i, i + CHUNK_SIZE);
+      
+      // Process chunk
+      chunk.forEach(processor);
+      
+      // Yield to main thread
+      if (i + CHUNK_SIZE < data.length) {
+        await this.yieldToMainThread(YIELD_INTERVAL);
+      }
+    }
+  }
+
+  // 3. Use Web Workers for Heavy Computations
+  static createWebWorker(workerScript: string): Worker {
+    const worker = new Worker(workerScript);
+    
+    worker.onerror = (error) => {
+      console.error('Web Worker error:', error);
+    };
+
+    return worker;
+  }
+
+  // 4. Implement Scheduler API (when available)
+  static scheduleWork(callback: () => void, priority: 'background' | 'user-blocking' | 'user-visible' = 'background'): void {
+    if ('scheduler' in window && 'postTask' in (window as any).scheduler) {
+      (window as any).scheduler.postTask(callback, { priority });
+    } else {
+      // Fallback to requestIdleCallback
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(callback);
+      } else {
+        // Fallback to setTimeout
+        setTimeout(callback, 0);
+      }
+    }
+  }
+
+  private static yieldToMainThread(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+
+// Virtual Scrolling Implementation
+class VirtualScrollList {
+  private container: HTMLElement;
+  private items: any[];
+  private itemHeight: number;
+  private visibleItems: number;
+  private scrollTop: number = 0;
+  private startIndex: number = 0;
+  private endIndex: number = 0;
+
+  constructor(
+    container: HTMLElement,
+    items: any[],
+    itemHeight: number,
+    renderItem: (item: any, index: number) => HTMLElement
+  ) {
+    this.container = container;
+    this.items = items;
+    this.itemHeight = itemHeight;
+    this.visibleItems = Math.ceil(container.clientHeight / itemHeight) + 2; // Buffer
+
+    this.setupScrollHandler();
+    this.render();
+  }
+
+  private setupScrollHandler(): void {
+    this.container.addEventListener('scroll', () => {
+      this.scrollTop = this.container.scrollTop;
+      this.updateVisibleRange();
+      this.render();
+    }, { passive: true });
+  }
+
+  private updateVisibleRange(): void {
+    this.startIndex = Math.floor(this.scrollTop / this.itemHeight);
+    this.endIndex = Math.min(
+      this.startIndex + this.visibleItems,
+      this.items.length
+    );
+  }
+
+  private render(): void {
+    // Clear container
+    this.container.innerHTML = '';
+
+    // Create spacer for items above viewport
+    const topSpacer = document.createElement('div');
+    topSpacer.style.height = `${this.startIndex * this.itemHeight}px`;
+    this.container.appendChild(topSpacer);
+
+    // Render visible items
+    for (let i = this.startIndex; i < this.endIndex; i++) {
+      const itemElement = this.renderItem(this.items[i], i);
+      itemElement.style.height = `${this.itemHeight}px`;
+      this.container.appendChild(itemElement);
+    }
+
+    // Create spacer for items below viewport
+    const bottomSpacer = document.createElement('div');
+    bottomSpacer.style.height = `${(this.items.length - this.endIndex) * this.itemHeight}px`;
+    this.container.appendChild(bottomSpacer);
+  }
+
+  private renderItem(item: any, index: number): HTMLElement {
+    const div = document.createElement('div');
+    div.className = 'virtual-list-item';
+    div.textContent = `Item ${index}: ${JSON.stringify(item)}`;
+    return div;
+  }
+}
+```
+
+### Cumulative Layout Shift (CLS) Optimization
+
+```typescript
+// CLS Prevention Strategies
+class CLSOptimizer {
+  // 1. Reserve Space for Dynamic Content
+  static reserveSpaceForImages(): void {
+    const images = document.querySelectorAll('img[data-aspect-ratio]');
+    
+    images.forEach(img => {
+      const aspectRatio = img.getAttribute('data-aspect-ratio');
+      if (aspectRatio) {
+        const [width, height] = aspectRatio.split(':').map(Number);
+        const paddingTop = (height / width) * 100;
+        
+        // Create aspect ratio container
+        const container = document.createElement('div');
+        container.style.position = 'relative';
+        container.style.paddingTop = `${paddingTop}%`;
+        container.style.overflow = 'hidden';
+        
+        img.style.position = 'absolute';
+        img.style.top = '0';
+        img.style.left = '0';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        
+        img.parentNode?.insertBefore(container, img);
+        container.appendChild(img);
+      }
+    });
+  }
+
+  // 2. Preload Fonts to Prevent FOUT/FOIT
+  static preloadFonts(): void {
+    const fonts = [
+      { family: 'Inter', weight: '400', display: 'swap' },
+      { family: 'Inter', weight: '600', display: 'swap' },
+      { family: 'Inter', weight: '700', display: 'swap' }
+    ];
+
+    fonts.forEach(font => {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'font';
+      link.type = 'font/woff2';
+      link.href = `/fonts/${font.family}-${font.weight}.woff2`;
+      link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    });
+
+    // Use font-display: swap in CSS
+    const style = document.createElement('style');
+    style.textContent = `
+      @font-face {
+        font-family: 'Inter';
+        src: url('/fonts/Inter-400.woff2') format('woff2');
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Inter';
+        src: url('/fonts/Inter-600.woff2') format('woff2');
+        font-weight: 600;
+        font-display: swap;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // 3. Animate with Composited Properties
+  static animateWithCompositor(element: HTMLElement, options: AnimationOptions): Animation {
+    // Use transform and opacity for GPU-accelerated animations
+    const keyframes = [
+      { 
+        transform: 'translateY(20px)',
+        opacity: 0
+      },
+      { 
+        transform: 'translateY(0)',
+        opacity: 1
+      }
+    ];
+
+    const animationOptions: KeyframeAnimationOptions = {
+      duration: options.duration || 300,
+      easing: options.easing || 'ease-out',
+      fill: 'both'
+    };
+
+    return element.animate(keyframes, animationOptions);
+  }
+
+  // 4. Use CSS Containment
+  static applyCSSContainment(): void {
+    const containers = document.querySelectorAll('[data-contain]');
+    
+    containers.forEach(container => {
+      const containType = container.getAttribute('data-contain');
+      if (containType) {
+        (container as HTMLElement).style.contain = containType;
+      }
+    });
+  }
+
+  // 5. Implement Skeleton Loading
+  static createSkeletonLoader(targetElement: HTMLElement, config: SkeletonConfig): void {
+    const skeleton = document.createElement('div');
+    skeleton.className = 'skeleton-loader';
+    skeleton.innerHTML = this.generateSkeletonHTML(config);
+    
+    // Add skeleton styles
+    const style = document.createElement('style');
+    style.textContent = `
+      .skeleton-loader {
+        animation: skeleton-loading 1.5s infinite ease-in-out;
+      }
+      .skeleton-item {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        border-radius: 4px;
+        margin-bottom: 8px;
+      }
+      @keyframes skeleton-loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    targetElement.appendChild(skeleton);
+  }
+
+  private static generateSkeletonHTML(config: SkeletonConfig): string {
+    let html = '';
+    
+    config.items.forEach(item => {
+      html += `<div class="skeleton-item" style="width: ${item.width}; height: ${item.height};"></div>`;
+    });
+    
+    return html;
+  }
+}
+
+interface AnimationOptions {
+  duration?: number;
+  easing?: string;
+}
+
+interface SkeletonConfig {
+  items: Array<{
+    width: string;
+    height: string;
+  }>;
+}
+```
+
+## Advanced Caching Strategies
+
+### Browser Caching and Service Workers
+
+```typescript
+// Service Worker for Advanced Caching
+class AdvancedServiceWorker {
+  private static readonly CACHE_NAME = 'app-cache-v1';
+  private static readonly DYNAMIC_CACHE = 'dynamic-cache-v1';
+  private static readonly STATIC_ASSETS = [
+    '/',
+    '/css/critical.css',
+    '/js/app.js',
+    '/fonts/Inter-Regular.woff2',
+    '/images/logo.svg'
+  ];
+
+  static install(): void {
+    self.addEventListener('install', (event: ExtendableEvent) => {
+      event.waitUntil(
+        caches.open(this.CACHE_NAME)
+          .then(cache => cache.addAll(this.STATIC_ASSETS))
+          .then(() => self.skipWaiting())
+      );
+    });
+  }
+
+  static activate(): void {
+    self.addEventListener('activate', (event: ExtendableEvent) => {
+      event.waitUntil(
+        caches.keys().then(cacheNames => {
+          return Promise.all(
+            cacheNames
+              .filter(cacheName => 
+                cacheName !== this.CACHE_NAME && 
+                cacheName !== this.DYNAMIC_CACHE
+              )
+              .map(cacheName => caches.delete(cacheName))
+          );
+        }).then(() => self.clients.claim())
+      );
+    });
+  }
+
+  static fetch(): void {
+    self.addEventListener('fetch', (event: FetchEvent) => {
+      event.respondWith(
+        this.handleFetch(event.request)
+      );
+    });
+  }
+
+  private static async handleFetch(request: Request): Promise<Response> {
+    // Network first for API calls
+    if (request.url.includes('/api/')) {
+      return this.networkFirst(request);
+    }
+
+    // Cache first for static assets
+    if (this.isStaticAsset(request.url)) {
+      return this.cacheFirst(request);
+    }
+
+    // Stale while revalidate for dynamic content
+    return this.staleWhileRevalidate(request);
+  }
+
+  private static async networkFirst(request: Request): Promise<Response> {
+    try {
+      const networkResponse = await fetch(request);
+      
+      if (networkResponse.ok) {
+        const cache = await caches.open(this.DYNAMIC_CACHE);
+        cache.put(request, networkResponse.clone());
+      }
+      
+      return networkResponse;
+    } catch (error) {
+      const cachedResponse = await caches.match(request);
+      return cachedResponse || new Response('Network error', { status: 408 });
+    }
+  }
+
+  private static async cacheFirst(request: Request): Promise<Response> {
+    const cachedResponse = await caches.match(request);
+    
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
+    try {
+      const networkResponse = await fetch(request);
+      
+      if (networkResponse.ok) {
+        const cache = await caches.open(this.CACHE_NAME);
+        cache.put(request, networkResponse.clone());
+      }
+      
+      return networkResponse;
+    } catch (error) {
+      return new Response('Asset not available', { status: 404 });
+    }
+  }
+
+  private static async staleWhileRevalidate(request: Request): Promise<Response> {
+    const cachedResponse = await caches.match(request);
+    
+    const networkResponsePromise = fetch(request).then(networkResponse => {
+      if (networkResponse.ok) {
+        const cache = caches.open(this.DYNAMIC_CACHE);
+        cache.then(c => c.put(request, networkResponse.clone()));
+      }
+      return networkResponse;
+    });
+
+    return cachedResponse || networkResponsePromise;
+  }
+
+  private static isStaticAsset(url: string): boolean {
+    return /\.(css|js|png|jpg|jpeg|webp|svg|woff|woff2|ttf)$/i.test(url);
+  }
+}
+
+// HTTP Caching Headers
+class HTTPCachingHeaders {
+  static setOptimalHeaders(response: express.Response, resourceType: string): void {
+    switch (resourceType) {
+      case 'static-assets':
+        // Long-term caching for versioned assets
+        response.set({
+          'Cache-Control': 'public, max-age=31536000, immutable', // 1 year
+          'ETag': this.generateETag(response.body),
+          'Last-Modified': new Date().toUTCString()
+        });
+        break;
+
+      case 'api-data':
+        // Short-term caching for API responses
+        response.set({
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=60', // 5 minutes
+          'ETag': this.generateETag(response.body),
+          'Vary': 'Accept, Authorization'
+        });
+        break;
+
+      case 'dynamic-pages':
+        // Conditional caching for dynamic content
+        response.set({
+          'Cache-Control': 'public, max-age=0, must-revalidate',
+          'ETag': this.generateETag(response.body),
+          'Last-Modified': new Date().toUTCString()
+        });
+        break;
+
+      case 'private-data':
+        // No caching for sensitive data
+        response.set({
+          'Cache-Control': 'private, no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
+        break;
+    }
+  }
+
+  private static generateETag(content: any): string {
+    return `"${require('crypto').createHash('md5').update(JSON.stringify(content)).digest('hex')}"`;
+  }
+}
+```
+
+### CDN and Edge Caching
+
+```typescript
+// CDN Configuration and Edge Caching
+class CDNOptimizer {
+  // CloudFlare Workers Example
+  static createCloudflareWorker(): string {
+    return `
+      addEventListener('fetch', event => {
+        event.respondWith(handleRequest(event.request))
+      })
+
+      async function handleRequest(request) {
+        const cache = caches.default
+        const cacheKey = new Request(request.url, request)
+        
+        // Check cache first
+        let response = await cache.match(cacheKey)
+        
+        if (!response) {
+          // Fetch from origin
+          response = await fetch(request)
+          
+          // Cache based on content type
+          if (response.ok) {
+            const contentType = response.headers.get('content-type') || ''
+            
+            if (contentType.includes('image/') || 
+                contentType.includes('font/') ||
+                contentType.includes('javascript') ||
+                contentType.includes('css')) {
+              
+              // Clone response and add cache headers
+              const cacheHeaders = new Headers(response.headers)
+              cacheHeaders.set('Cache-Control', 'public, max-age=86400') // 24 hours
+              cacheHeaders.set('CDN-Cache-Control', 'public, max-age=2592000') // 30 days
+              
+              response = new Response(response.body, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: cacheHeaders
+              })
+              
+              // Store in cache
+              event.waitUntil(cache.put(cacheKey, response.clone()))
+            }
+          }
+        }
+        
+        return response
+      }
+    `;
+  }
+
+  // Image Optimization at Edge
+  static optimizeImagesAtEdge(request: Request): string {
+    return `
+      addEventListener('fetch', event => {
+        if (event.request.url.includes('/images/')) {
+          event.respondWith(handleImageRequest(event.request))
+        }
+      })
+
+      async function handleImageRequest(request) {
+        const url = new URL(request.url)
+        const accept = request.headers.get('Accept')
+        
+        // Determine optimal format
+        let format = 'jpeg'
+        if (accept && accept.includes('image/webp')) {
+          format = 'webp'
+        } else if (accept && accept.includes('image/avif')) {
+          format = 'avif'
+        }
+        
+        // Extract quality and dimensions from query params
+        const quality = url.searchParams.get('q') || '85'
+        const width = url.searchParams.get('w')
+        const height = url.searchParams.get('h')
+        
+        // Build optimized image URL
+        const optimizedUrl = \`\${url.pathname}?format=\${format}&quality=\${quality}\${width ? \`&width=\${width}\` : ''}\${height ? \`&height=\${height}\` : ''}\`
+        
+        // Check cache
+        const cacheKey = new Request(optimizedUrl)
+        let response = await caches.default.match(cacheKey)
+        
+        if (!response) {
+          // Fetch and optimize image
+          response = await fetch(optimizedUrl)
+          
+          if (response.ok) {
+            const headers = new Headers(response.headers)
+            headers.set('Cache-Control', 'public, max-age=31536000') // 1 year
+            headers.set('Vary', 'Accept')
+            
+            response = new Response(response.body, {
+              status: response.status,
+              statusText: response.statusText,
+              headers: headers
+            })
+            
+            // Cache the optimized image
+            await caches.default.put(cacheKey, response.clone())
+          }
+        }
+        
+        return response
+      }
+    `;
+  }
+}
+```
+
+## Performance Monitoring and Analytics
+
+### Real User Monitoring (RUM)
+
+```typescript
+// Real User Monitoring Implementation
+class RealUserMonitoring {
+  private metrics: PerformanceMetrics = {};
+  private apiEndpoint: string;
+
+  constructor(apiEndpoint: string) {
+    this.apiEndpoint = apiEndpoint;
+    this.initializeMonitoring();
+  }
+
+  private initializeMonitoring(): void {
+    // Core Web Vitals
+    this.measureCoreWebVitals();
+    
+    // Navigation Timing
+    this.measureNavigationTiming();
+    
+    // Resource Timing
+    this.measureResourceTiming();
+    
+    // Custom Metrics
+    this.measureCustomMetrics();
+    
+    // Send metrics on page unload
+    this.setupBeaconSending();
+  }
+
+  private measureCoreWebVitals(): void {
+    // LCP (Largest Contentful Paint)
+    new PerformanceObserver((entryList) => {
+      const entries = entryList.getEntries();
+      const lastEntry = entries[entries.length - 1];
+      
+      this.metrics.lcp = {
+        value: lastEntry.startTime,
+        element: lastEntry.element?.tagName,
+        url: lastEntry.url
+      };
+    }).observe({ entryTypes: ['largest-contentful-paint'] });
+
+    // FID (First Input Delay)
+    new PerformanceObserver((entryList) => {
+      const entry = entryList.getEntries()[0];
+      
+      this.metrics.fid = {
+        value: entry.processingStart - entry.startTime,
+        eventType: entry.name
+      };
+    }).observe({ entryTypes: ['first-input'] });
+
+    // CLS (Cumulative Layout Shift)
+    let clsValue = 0;
+    new PerformanceObserver((entryList) => {
+      for (const entry of entryList.getEntries()) {
+        if (!entry.hadRecentInput) {
+          clsValue += entry.value;
+        }
+      }
+      
+      this.metrics.cls = {
+        value: clsValue
+      };
+    }).observe({ entryTypes: ['layout-shift'] });
+  }
+
+  private measureNavigationTiming(): void {
+    window.addEventListener('load', () => {
+      const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+      
+      this.metrics.navigationTiming = {
+        domContentLoaded: navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart,
+        loadComplete: navigation.loadEventEnd - navigation.loadEventStart,
+        firstByte: navigation.responseStart - navigation.requestStart,
+        domComplete: navigation.domComplete - navigation.navigationStart,
+        redirectTime: navigation.redirectEnd - navigation.redirectStart,
+        dnsTime: navigation.domainLookupEnd - navigation.domainLookupStart,
+        connectTime: navigation.connectEnd - navigation.connectStart,
+        requestTime: navigation.responseEnd - navigation.requestStart
+      };
+    });
+  }
+
+  private measureResourceTiming(): void {
+    const observer = new PerformanceObserver((entryList) => {
+      const entries = entryList.getEntries();
+      
+      const resourceMetrics = entries.map(entry => ({
+        name: entry.name,
+        type: this.getResourceType(entry.name),
+        duration: entry.duration,
+        size: (entry as any).transferSize || 0,
+        cached: (entry as any).transferSize === 0
+      }));
+
+      this.metrics.resources = resourceMetrics;
+    });
+
+    observer.observe({ entryTypes: ['resource'] });
+  }
+
+  private measureCustomMetrics(): void {
+    // Time to Interactive (TTI)
+    this.measureTimeToInteractive();
+    
+    // First Meaningful Paint (FMP)
+    this.measureFirstMeaningfulPaint();
+    
+    // Total Blocking Time (TBT)
+    this.measureTotalBlockingTime();
+  }
+
+  private measureTimeToInteractive(): void {
+    let lastLongTaskTime = 0;
+    
+    new PerformanceObserver((entryList) => {
+      const entries = entryList.getEntries();
+      
+      entries.forEach(entry => {
+        if (entry.duration > 50) {
+          lastLongTaskTime = entry.startTime + entry.duration;
+        }
+      });
+    }).observe({ entryTypes: ['longtask'] });
+
+    window.addEventListener('load', () => {
+      // Simple TTI approximation
+      const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+      const domContentLoaded = navigationEntry.domContentLoadedEventEnd;
+      
+      this.metrics.tti = Math.max(domContentLoaded, lastLongTaskTime);
+    });
+  }
+
+  private measureFirstMeaningfulPaint(): void {
+    // Approximate FMP using largest contentful paint
+    new PerformanceObserver((entryList) => {
+      const entries = entryList.getEntries();
+      if (entries.length > 0) {
+        this.metrics.fmp = entries[0].startTime;
+      }
+    }).observe({ entryTypes: ['largest-contentful-paint'] });
+  }
+
+  private measureTotalBlockingTime(): void {
+    let totalBlockingTime = 0;
+    
+    new PerformanceObserver((entryList) => {
+      const entries = entryList.getEntries();
+      
+      entries.forEach(entry => {
+        if (entry.duration > 50) {
+          totalBlockingTime += entry.duration - 50;
+        }
+      });
+      
+      this.metrics.tbt = totalBlockingTime;
+    }).observe({ entryTypes: ['longtask'] });
+  }
+
+  private setupBeaconSending(): void {
+    // Send metrics on page unload
+    window.addEventListener('beforeunload', () => {
+      this.sendMetrics();
+    });
+
+    // Send metrics periodically for long sessions
+    setInterval(() => {
+      this.sendMetrics();
+    }, 30000); // Every 30 seconds
+  }
+
+  private sendMetrics(): void {
+    const payload = {
+      ...this.metrics,
+      timestamp: Date.now(),
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      connectionType: (navigator as any).connection?.effectiveType,
+      sessionId: this.getSessionId()
+    };
+
+    // Use sendBeacon for reliable delivery
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(
+        this.apiEndpoint,
+        JSON.stringify(payload)
+      );
+    } else {
+      // Fallback to fetch
+      fetch(this.apiEndpoint, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        keepalive: true
+      }).catch(console.error);
+    }
+  }
+
+  private getResourceType(url: string): string {
+    if (url.includes('.js')) return 'script';
+    if (url.includes('.css')) return 'stylesheet';
+    if (url.match(/\.(png|jpg|jpeg|webp|svg|gif)$/)) return 'image';
+    if (url.match(/\.(woff|woff2|ttf|otf)$/)) return 'font';
+    return 'other';
+  }
+
+  private getSessionId(): string {
+    let sessionId = sessionStorage.getItem('performance-session-id');
+    if (!sessionId) {
+      sessionId = crypto.randomUUID();
+      sessionStorage.setItem('performance-session-id', sessionId);
+    }
+    return sessionId;
+  }
+}
+
+interface PerformanceMetrics {
+  lcp?: {
+    value: number;
+    element?: string;
+    url?: string;
+  };
+  fid?: {
+    value: number;
+    eventType?: string;
+  };
+  cls?: {
+    value: number;
+  };
+  navigationTiming?: {
+    domContentLoaded: number;
+    loadComplete: number;
+    firstByte: number;
+    domComplete: number;
+    redirectTime: number;
+    dnsTime: number;
+    connectTime: number;
+    requestTime: number;
+  };
+  resources?: Array<{
+    name: string;
+    type: string;
+    duration: number;
+    size: number;
+    cached: boolean;
+  }>;
+  tti?: number;
+  fmp?: number;
+  tbt?: number;
+}
+
+// Initialize RUM
+const rum = new RealUserMonitoring('/api/performance/metrics');
+```
+
+## Production Implementation Checklist
+
+- [ ] **Core Web Vitals**: LCP < 2.5s, FID < 100ms, CLS < 0.1
+- [ ] **Resource Optimization**: Image compression, font optimization, code splitting
+- [ ] **Caching Strategy**: Service workers, HTTP caching, CDN configuration
+- [ ] **Performance Monitoring**: RUM implementation, alerts, dashboards
+- [ ] **Performance Budget**: Size budgets, timing budgets, quality gates
+- [ ] **Progressive Enhancement**: Core functionality works without JS
+- [ ] **Mobile Performance**: Optimized for slow networks and low-end devices
+- [ ] **Accessibility**: Performance affects screen reader users
+- [ ] **SEO Optimization**: Core Web Vitals impact search rankings
+- [ ] **Continuous Monitoring**: Performance regression detection
+
+<Callout type="success">
+Optimized websites see 23% increase in conversions, 50% reduction in bounce rate, and 40% improvement in user engagement scores.
+</Callout>
+
+---
+
+*Implement our complete [Performance Optimization Framework](https://github.com/vimasa-consulting/performance-optimization-framework) for production-ready web performance.* 

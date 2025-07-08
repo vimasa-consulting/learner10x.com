@@ -1,0 +1,1160 @@
+---
+title: "CQRS & Event Sourcing Architecture Guide"
+description: "Master Command Query Responsibility Segregation and Event Sourcing patterns for scalable, auditable systems. Learn implementation strategies, event store design, and projection management."
+category: "architects"
+tags: ["cqrs", "event-sourcing", "event-store", "projections", "command-query-separation", "eventual-consistency", "event-driven-architecture"]
+publishedAt: "2024-01-16"
+difficulty: "advanced"
+externalLinks:
+  - title: "CQRS by Martin Fowler"
+    url: "https://martinfowler.com/bliki/CQRS.html"
+    description: "Martin Fowler's explanation of CQRS pattern"
+    category: "articles"
+  - title: "Event Sourcing by Martin Fowler"
+    url: "https://martinfowler.com/eaaDev/EventSourcing.html"
+    description: "Event Sourcing pattern explained"
+    category: "articles"
+  - title: "EventStore Documentation"
+    url: "https://eventstore.com/docs/"
+    description: "EventStore database documentation"
+    category: "documentation"
+  - title: "Axon Framework"
+    url: "https://axoniq.io/"
+    description: "Java framework for CQRS and Event Sourcing"
+    category: "frameworks"
+  - title: "Greg Young - CQRS Documents"
+    url: "https://cqrs.files.wordpress.com/2010/11/cqrs_documents.pdf"
+    description: "Comprehensive CQRS documentation by Greg Young"
+    category: "papers"
+relatedGuides: ["domain-driven-design-guide", "microservices-architecture-guide", "api-design-patterns-guide"]
+---
+
+# CQRS & Event Sourcing Architecture Guide
+
+Build scalable, auditable systems using Command Query Responsibility Segregation and Event Sourcing. Learn to separate read and write operations, implement event stores, and manage projections for high-performance applications.
+
+## Introduction
+
+CQRS and Event Sourcing are architectural patterns that provide:
+
+- **Command-Query Separation**: Independent scaling of read and write operations
+- **Event Sourcing**: Complete audit trail and temporal query capabilities
+- **Eventual Consistency**: Flexible consistency models for distributed systems
+- **Scalability**: Optimized read and write models for different use cases
+
+<Callout type="info">
+Systems implementing CQRS/ES report 10x improvement in read performance, 100% audit compliance, and 50% reduction in data corruption incidents.
+</Callout>
+
+## CQRS Pattern Implementation
+
+### Command Side Architecture
+
+```typescript
+// Command Model - Write Operations
+interface Command {
+  commandId: string;
+  aggregateId: string;
+  timestamp: Date;
+  userId: string;
+}
+
+// Commands for Order Management
+class CreateOrderCommand implements Command {
+  constructor(
+    public readonly commandId: string,
+    public readonly aggregateId: string,
+    public readonly customerId: string,
+    public readonly items: OrderItemDto[],
+    public readonly shippingAddress: AddressDto,
+    public readonly timestamp: Date = new Date(),
+    public readonly userId: string
+  ) {}
+}
+
+class AddOrderItemCommand implements Command {
+  constructor(
+    public readonly commandId: string,
+    public readonly aggregateId: string,
+    public readonly productId: string,
+    public readonly quantity: number,
+    public readonly unitPrice: number,
+    public readonly timestamp: Date = new Date(),
+    public readonly userId: string
+  ) {}
+}
+
+class ConfirmOrderCommand implements Command {
+  constructor(
+    public readonly commandId: string,
+    public readonly aggregateId: string,
+    public readonly timestamp: Date = new Date(),
+    public readonly userId: string
+  ) {}
+}
+
+// Command Handlers
+interface CommandHandler<T extends Command> {
+  handle(command: T): Promise<void>;
+}
+
+class OrderCommandHandler implements 
+  CommandHandler<CreateOrderCommand>,
+  CommandHandler<AddOrderItemCommand>,
+  CommandHandler<ConfirmOrderCommand> {
+
+  constructor(
+    private readonly repository: EventSourcedRepository<OrderAggregate>,
+    private readonly eventBus: EventBus
+  ) {}
+
+  async handle(command: CreateOrderCommand): Promise<void> {
+    // Validate command
+    await this.validateCreateOrderCommand(command);
+
+    // Create aggregate
+    const order = OrderAggregate.create(
+      command.aggregateId,
+      command.customerId,
+      command.items,
+      command.shippingAddress
+    );
+
+    // Save events
+    await this.repository.save(order);
+
+    // Publish events
+    const events = order.getUncommittedEvents();
+    await this.eventBus.publishAll(events);
+  }
+
+  async handle(command: AddOrderItemCommand): Promise<void> {
+    // Load aggregate
+    const order = await this.repository.getById(command.aggregateId);
+    
+    // Execute business logic
+    order.addItem(
+      command.productId,
+      command.quantity,
+      command.unitPrice
+    );
+
+    // Save and publish
+    await this.repository.save(order);
+    const events = order.getUncommittedEvents();
+    await this.eventBus.publishAll(events);
+  }
+
+  async handle(command: ConfirmOrderCommand): Promise<void> {
+    const order = await this.repository.getById(command.aggregateId);
+    order.confirm();
+    
+    await this.repository.save(order);
+    const events = order.getUncommittedEvents();
+    await this.eventBus.publishAll(events);
+  }
+
+  private async validateCreateOrderCommand(command: CreateOrderCommand): Promise<void> {
+    if (!command.items || command.items.length === 0) {
+      throw new Error('Order must have at least one item');
+    }
+
+    if (!command.customerId) {
+      throw new Error('Customer ID is required');
+    }
+
+    // Additional validation logic
+  }
+}
+
+// Command Bus
+interface CommandBus {
+  send<T extends Command>(command: T): Promise<void>;
+}
+
+class InMemoryCommandBus implements CommandBus {
+  private handlers = new Map<string, CommandHandler<any>>();
+
+  register<T extends Command>(
+    commandType: new (...args: any[]) => T,
+    handler: CommandHandler<T>
+  ): void {
+    this.handlers.set(commandType.name, handler);
+  }
+
+  async send<T extends Command>(command: T): Promise<void> {
+    const handler = this.handlers.get(command.constructor.name);
+    if (!handler) {
+      throw new Error(`No handler registered for ${command.constructor.name}`);
+    }
+
+    await handler.handle(command);
+  }
+}
+```
+
+### Query Side Architecture
+
+```typescript
+// Query Model - Read Operations
+interface Query {
+  queryId: string;
+  userId: string;
+  timestamp: Date;
+}
+
+// Queries for Order Management
+class GetOrderByIdQuery implements Query {
+  constructor(
+    public readonly queryId: string,
+    public readonly orderId: string,
+    public readonly userId: string,
+    public readonly timestamp: Date = new Date()
+  ) {}
+}
+
+class GetOrdersByCustomerQuery implements Query {
+  constructor(
+    public readonly queryId: string,
+    public readonly customerId: string,
+    public readonly page: number = 1,
+    public readonly pageSize: number = 20,
+    public readonly userId: string,
+    public readonly timestamp: Date = new Date()
+  ) {}
+}
+
+class GetOrderStatisticsQuery implements Query {
+  constructor(
+    public readonly queryId: string,
+    public readonly startDate: Date,
+    public readonly endDate: Date,
+    public readonly userId: string,
+    public readonly timestamp: Date = new Date()
+  ) {}
+}
+
+// Read Models (Projections)
+interface OrderReadModel {
+  orderId: string;
+  customerId: string;
+  customerName: string;
+  status: string;
+  totalAmount: number;
+  currency: string;
+  createdAt: Date;
+  updatedAt: Date;
+  items: OrderItemReadModel[];
+}
+
+interface OrderItemReadModel {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
+interface OrderStatisticsReadModel {
+  totalOrders: number;
+  totalRevenue: number;
+  averageOrderValue: number;
+  topProducts: ProductStatistic[];
+  ordersByStatus: StatusStatistic[];
+}
+
+// Query Handlers
+interface QueryHandler<TQuery extends Query, TResult> {
+  handle(query: TQuery): Promise<TResult>;
+}
+
+class OrderQueryHandler implements
+  QueryHandler<GetOrderByIdQuery, OrderReadModel | null>,
+  QueryHandler<GetOrdersByCustomerQuery, PaginatedResult<OrderReadModel>>,
+  QueryHandler<GetOrderStatisticsQuery, OrderStatisticsReadModel> {
+
+  constructor(
+    private readonly readModelRepository: OrderReadModelRepository
+  ) {}
+
+  async handle(query: GetOrderByIdQuery): Promise<OrderReadModel | null> {
+    return await this.readModelRepository.findById(query.orderId);
+  }
+
+  async handle(query: GetOrdersByCustomerQuery): Promise<PaginatedResult<OrderReadModel>> {
+    return await this.readModelRepository.findByCustomerId(
+      query.customerId,
+      query.page,
+      query.pageSize
+    );
+  }
+
+  async handle(query: GetOrderStatisticsQuery): Promise<OrderStatisticsReadModel> {
+    return await this.readModelRepository.getStatistics(
+      query.startDate,
+      query.endDate
+    );
+  }
+}
+
+// Query Bus
+interface QueryBus {
+  execute<TQuery extends Query, TResult>(query: TQuery): Promise<TResult>;
+}
+
+class InMemoryQueryBus implements QueryBus {
+  private handlers = new Map<string, QueryHandler<any, any>>();
+
+  register<TQuery extends Query, TResult>(
+    queryType: new (...args: any[]) => TQuery,
+    handler: QueryHandler<TQuery, TResult>
+  ): void {
+    this.handlers.set(queryType.name, handler);
+  }
+
+  async execute<TQuery extends Query, TResult>(query: TQuery): Promise<TResult> {
+    const handler = this.handlers.get(query.constructor.name);
+    if (!handler) {
+      throw new Error(`No handler registered for ${query.constructor.name}`);
+    }
+
+    return await handler.handle(query);
+  }
+}
+```
+
+## Event Sourcing Implementation
+
+### Event Store Design
+
+```typescript
+// Domain Events
+abstract class DomainEvent {
+  constructor(
+    public readonly eventId: string = crypto.randomUUID(),
+    public readonly aggregateId: string,
+    public readonly aggregateType: string,
+    public readonly eventType: string,
+    public readonly eventVersion: number,
+    public readonly timestamp: Date = new Date(),
+    public readonly metadata: EventMetadata = {}
+  ) {}
+}
+
+interface EventMetadata {
+  userId?: string;
+  correlationId?: string;
+  causationId?: string;
+  [key: string]: any;
+}
+
+// Order Events
+class OrderCreatedEvent extends DomainEvent {
+  constructor(
+    aggregateId: string,
+    eventVersion: number,
+    public readonly customerId: string,
+    public readonly items: OrderItemData[],
+    public readonly shippingAddress: AddressData,
+    metadata: EventMetadata = {}
+  ) {
+    super(
+      crypto.randomUUID(),
+      aggregateId,
+      'Order',
+      'OrderCreated',
+      eventVersion,
+      new Date(),
+      metadata
+    );
+  }
+}
+
+class OrderItemAddedEvent extends DomainEvent {
+  constructor(
+    aggregateId: string,
+    eventVersion: number,
+    public readonly productId: string,
+    public readonly quantity: number,
+    public readonly unitPrice: number,
+    metadata: EventMetadata = {}
+  ) {
+    super(
+      crypto.randomUUID(),
+      aggregateId,
+      'Order',
+      'OrderItemAdded',
+      eventVersion,
+      new Date(),
+      metadata
+    );
+  }
+}
+
+class OrderConfirmedEvent extends DomainEvent {
+  constructor(
+    aggregateId: string,
+    eventVersion: number,
+    public readonly totalAmount: number,
+    metadata: EventMetadata = {}
+  ) {
+    super(
+      crypto.randomUUID(),
+      aggregateId,
+      'Order',
+      'OrderConfirmed',
+      eventVersion,
+      new Date(),
+      metadata
+    );
+  }
+}
+
+// Event Store Interface
+interface EventStore {
+  appendEvents(
+    aggregateId: string,
+    events: DomainEvent[],
+    expectedVersion: number
+  ): Promise<void>;
+  
+  getEvents(
+    aggregateId: string,
+    fromVersion?: number
+  ): Promise<DomainEvent[]>;
+  
+  getAllEvents(
+    fromPosition?: number,
+    maxCount?: number
+  ): Promise<StoredEvent[]>;
+}
+
+interface StoredEvent {
+  eventId: string;
+  aggregateId: string;
+  aggregateType: string;
+  eventType: string;
+  eventVersion: number;
+  timestamp: Date;
+  data: any;
+  metadata: EventMetadata;
+  globalPosition: number;
+}
+
+// Event Store Implementation
+class SqlEventStore implements EventStore {
+  constructor(private readonly connection: DatabaseConnection) {}
+
+  async appendEvents(
+    aggregateId: string,
+    events: DomainEvent[],
+    expectedVersion: number
+  ): Promise<void> {
+    await this.connection.transaction(async (trx) => {
+      // Check for concurrency conflicts
+      const currentVersion = await this.getCurrentVersion(aggregateId, trx);
+      if (currentVersion !== expectedVersion) {
+        throw new ConcurrencyError(
+          `Expected version ${expectedVersion}, but current version is ${currentVersion}`
+        );
+      }
+
+      // Insert events
+      for (const event of events) {
+        await trx('events').insert({
+          event_id: event.eventId,
+          aggregate_id: event.aggregateId,
+          aggregate_type: event.aggregateType,
+          event_type: event.eventType,
+          event_version: event.eventVersion,
+          timestamp: event.timestamp,
+          data: JSON.stringify(this.serializeEventData(event)),
+          metadata: JSON.stringify(event.metadata)
+        });
+      }
+    });
+  }
+
+  async getEvents(
+    aggregateId: string,
+    fromVersion: number = 0
+  ): Promise<DomainEvent[]> {
+    const rows = await this.connection('events')
+      .where('aggregate_id', aggregateId)
+      .where('event_version', '>', fromVersion)
+      .orderBy('event_version', 'asc');
+
+    return rows.map(row => this.deserializeEvent(row));
+  }
+
+  async getAllEvents(
+    fromPosition: number = 0,
+    maxCount: number = 1000
+  ): Promise<StoredEvent[]> {
+    const rows = await this.connection('events')
+      .where('global_position', '>', fromPosition)
+      .orderBy('global_position', 'asc')
+      .limit(maxCount);
+
+    return rows.map(row => ({
+      eventId: row.event_id,
+      aggregateId: row.aggregate_id,
+      aggregateType: row.aggregate_type,
+      eventType: row.event_type,
+      eventVersion: row.event_version,
+      timestamp: row.timestamp,
+      data: JSON.parse(row.data),
+      metadata: JSON.parse(row.metadata),
+      globalPosition: row.global_position
+    }));
+  }
+
+  private async getCurrentVersion(
+    aggregateId: string,
+    trx: any
+  ): Promise<number> {
+    const result = await trx('events')
+      .where('aggregate_id', aggregateId)
+      .max('event_version as max_version')
+      .first();
+
+    return result?.max_version ?? 0;
+  }
+
+  private serializeEventData(event: DomainEvent): any {
+    // Remove base class properties to get event-specific data
+    const { eventId, aggregateId, aggregateType, eventType, eventVersion, timestamp, metadata, ...eventData } = event;
+    return eventData;
+  }
+
+  private deserializeEvent(row: any): DomainEvent {
+    const eventData = JSON.parse(row.data);
+    const metadata = JSON.parse(row.metadata);
+
+    // Event factory based on event type
+    switch (row.event_type) {
+      case 'OrderCreated':
+        return new OrderCreatedEvent(
+          row.aggregate_id,
+          row.event_version,
+          eventData.customerId,
+          eventData.items,
+          eventData.shippingAddress,
+          metadata
+        );
+      case 'OrderItemAdded':
+        return new OrderItemAddedEvent(
+          row.aggregate_id,
+          row.event_version,
+          eventData.productId,
+          eventData.quantity,
+          eventData.unitPrice,
+          metadata
+        );
+      case 'OrderConfirmed':
+        return new OrderConfirmedEvent(
+          row.aggregate_id,
+          row.event_version,
+          eventData.totalAmount,
+          metadata
+        );
+      default:
+        throw new Error(`Unknown event type: ${row.event_type}`);
+    }
+  }
+}
+```
+
+### Event-Sourced Aggregates
+
+```typescript
+// Base Event-Sourced Aggregate
+abstract class EventSourcedAggregate {
+  protected events: DomainEvent[] = [];
+  protected version: number = 0;
+
+  constructor(protected readonly id: string) {}
+
+  public getUncommittedEvents(): DomainEvent[] {
+    return [...this.events];
+  }
+
+  public markEventsAsCommitted(): void {
+    this.events = [];
+  }
+
+  public getVersion(): number {
+    return this.version;
+  }
+
+  protected raiseEvent(event: DomainEvent): void {
+    this.events.push(event);
+    this.apply(event);
+    this.version++;
+  }
+
+  public loadFromHistory(events: DomainEvent[]): void {
+    for (const event of events) {
+      this.apply(event);
+      this.version++;
+    }
+  }
+
+  protected abstract apply(event: DomainEvent): void;
+}
+
+// Order Aggregate with Event Sourcing
+class OrderAggregate extends EventSourcedAggregate {
+  private customerId: string = '';
+  private items: Map<string, OrderItemData> = new Map();
+  private shippingAddress: AddressData | null = null;
+  private status: OrderStatus = OrderStatus.PENDING;
+  private totalAmount: number = 0;
+
+  static create(
+    orderId: string,
+    customerId: string,
+    items: OrderItemData[],
+    shippingAddress: AddressData
+  ): OrderAggregate {
+    const order = new OrderAggregate(orderId);
+    
+    const event = new OrderCreatedEvent(
+      orderId,
+      1,
+      customerId,
+      items,
+      shippingAddress
+    );
+    
+    order.raiseEvent(event);
+    return order;
+  }
+
+  addItem(productId: string, quantity: number, unitPrice: number): void {
+    if (this.status !== OrderStatus.PENDING) {
+      throw new Error('Cannot modify confirmed order');
+    }
+
+    const event = new OrderItemAddedEvent(
+      this.id,
+      this.version + 1,
+      productId,
+      quantity,
+      unitPrice
+    );
+
+    this.raiseEvent(event);
+  }
+
+  confirm(): void {
+    if (this.status !== OrderStatus.PENDING) {
+      throw new Error('Order already confirmed');
+    }
+
+    if (this.items.size === 0) {
+      throw new Error('Cannot confirm empty order');
+    }
+
+    const event = new OrderConfirmedEvent(
+      this.id,
+      this.version + 1,
+      this.totalAmount
+    );
+
+    this.raiseEvent(event);
+  }
+
+  protected apply(event: DomainEvent): void {
+    switch (event.eventType) {
+      case 'OrderCreated':
+        this.applyOrderCreated(event as OrderCreatedEvent);
+        break;
+      case 'OrderItemAdded':
+        this.applyOrderItemAdded(event as OrderItemAddedEvent);
+        break;
+      case 'OrderConfirmed':
+        this.applyOrderConfirmed(event as OrderConfirmedEvent);
+        break;
+      default:
+        throw new Error(`Unknown event type: ${event.eventType}`);
+    }
+  }
+
+  private applyOrderCreated(event: OrderCreatedEvent): void {
+    this.customerId = event.customerId;
+    this.shippingAddress = event.shippingAddress;
+    
+    for (const item of event.items) {
+      this.items.set(item.productId, item);
+    }
+    
+    this.recalculateTotal();
+  }
+
+  private applyOrderItemAdded(event: OrderItemAddedEvent): void {
+    const existingItem = this.items.get(event.productId);
+    
+    if (existingItem) {
+      existingItem.quantity += event.quantity;
+    } else {
+      this.items.set(event.productId, {
+        productId: event.productId,
+        quantity: event.quantity,
+        unitPrice: event.unitPrice
+      });
+    }
+    
+    this.recalculateTotal();
+  }
+
+  private applyOrderConfirmed(event: OrderConfirmedEvent): void {
+    this.status = OrderStatus.CONFIRMED;
+    this.totalAmount = event.totalAmount;
+  }
+
+  private recalculateTotal(): void {
+    this.totalAmount = Array.from(this.items.values())
+      .reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
+  }
+
+  // Getters for read operations
+  public getCustomerId(): string { return this.customerId; }
+  public getStatus(): OrderStatus { return this.status; }
+  public getTotalAmount(): number { return this.totalAmount; }
+  public getItems(): OrderItemData[] { return Array.from(this.items.values()); }
+}
+
+// Repository for Event-Sourced Aggregates
+interface EventSourcedRepository<T extends EventSourcedAggregate> {
+  save(aggregate: T): Promise<void>;
+  getById(id: string): Promise<T>;
+}
+
+class OrderRepository implements EventSourcedRepository<OrderAggregate> {
+  constructor(private readonly eventStore: EventStore) {}
+
+  async save(order: OrderAggregate): Promise<void> {
+    const events = order.getUncommittedEvents();
+    if (events.length === 0) return;
+
+    await this.eventStore.appendEvents(
+      order.id,
+      events,
+      order.getVersion() - events.length
+    );
+
+    order.markEventsAsCommitted();
+  }
+
+  async getById(id: string): Promise<OrderAggregate> {
+    const events = await this.eventStore.getEvents(id);
+    if (events.length === 0) {
+      throw new Error(`Order with id ${id} not found`);
+    }
+
+    const order = new OrderAggregate(id);
+    order.loadFromHistory(events);
+    return order;
+  }
+}
+```
+
+## Projection Management
+
+### Event Projections
+
+```typescript
+// Projection Engine
+interface ProjectionEngine {
+  startProjection(projectionName: string): Promise<void>;
+  stopProjection(projectionName: string): Promise<void>;
+  rebuildProjection(projectionName: string): Promise<void>;
+  getProjectionStatus(projectionName: string): Promise<ProjectionStatus>;
+}
+
+interface ProjectionStatus {
+  name: string;
+  lastProcessedPosition: number;
+  status: 'running' | 'stopped' | 'rebuilding' | 'error';
+  lastError?: string;
+  lastUpdated: Date;
+}
+
+class DefaultProjectionEngine implements ProjectionEngine {
+  private projections = new Map<string, ProjectionRunner>();
+
+  constructor(
+    private readonly eventStore: EventStore,
+    private readonly checkpointStore: CheckpointStore
+  ) {}
+
+  async startProjection(projectionName: string): Promise<void> {
+    if (this.projections.has(projectionName)) {
+      throw new Error(`Projection ${projectionName} already running`);
+    }
+
+    const projection = this.createProjection(projectionName);
+    const runner = new ProjectionRunner(
+      projection,
+      this.eventStore,
+      this.checkpointStore
+    );
+
+    this.projections.set(projectionName, runner);
+    await runner.start();
+  }
+
+  async stopProjection(projectionName: string): Promise<void> {
+    const runner = this.projections.get(projectionName);
+    if (runner) {
+      await runner.stop();
+      this.projections.delete(projectionName);
+    }
+  }
+
+  async rebuildProjection(projectionName: string): Promise<void> {
+    await this.stopProjection(projectionName);
+    await this.checkpointStore.resetCheckpoint(projectionName);
+    
+    const projection = this.createProjection(projectionName);
+    await projection.reset();
+    
+    await this.startProjection(projectionName);
+  }
+
+  private createProjection(projectionName: string): EventProjection {
+    switch (projectionName) {
+      case 'OrderReadModel':
+        return new OrderReadModelProjection();
+      case 'OrderStatistics':
+        return new OrderStatisticsProjection();
+      default:
+        throw new Error(`Unknown projection: ${projectionName}`);
+    }
+  }
+}
+
+// Base Projection Interface
+interface EventProjection {
+  name: string;
+  handleEvent(event: StoredEvent): Promise<void>;
+  reset(): Promise<void>;
+}
+
+// Order Read Model Projection
+class OrderReadModelProjection implements EventProjection {
+  public readonly name = 'OrderReadModel';
+
+  constructor(
+    private readonly repository: OrderReadModelRepository
+  ) {}
+
+  async handleEvent(event: StoredEvent): Promise<void> {
+    switch (event.eventType) {
+      case 'OrderCreated':
+        await this.handleOrderCreated(event);
+        break;
+      case 'OrderItemAdded':
+        await this.handleOrderItemAdded(event);
+        break;
+      case 'OrderConfirmed':
+        await this.handleOrderConfirmed(event);
+        break;
+    }
+  }
+
+  async reset(): Promise<void> {
+    await this.repository.deleteAll();
+  }
+
+  private async handleOrderCreated(event: StoredEvent): Promise<void> {
+    const eventData = event.data;
+    
+    const readModel: OrderReadModel = {
+      orderId: event.aggregateId,
+      customerId: eventData.customerId,
+      customerName: await this.getCustomerName(eventData.customerId),
+      status: 'pending',
+      totalAmount: this.calculateTotal(eventData.items),
+      currency: 'USD',
+      createdAt: event.timestamp,
+      updatedAt: event.timestamp,
+      items: eventData.items.map((item: any) => ({
+        productId: item.productId,
+        productName: item.productName || 'Unknown',
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        subtotal: item.quantity * item.unitPrice
+      }))
+    };
+
+    await this.repository.insert(readModel);
+  }
+
+  private async handleOrderItemAdded(event: StoredEvent): Promise<void> {
+    const order = await this.repository.findById(event.aggregateId);
+    if (!order) return;
+
+    const eventData = event.data;
+    const newItem: OrderItemReadModel = {
+      productId: eventData.productId,
+      productName: eventData.productName || 'Unknown',
+      quantity: eventData.quantity,
+      unitPrice: eventData.unitPrice,
+      subtotal: eventData.quantity * eventData.unitPrice
+    };
+
+    order.items.push(newItem);
+    order.totalAmount = order.items.reduce((sum, item) => sum + item.subtotal, 0);
+    order.updatedAt = event.timestamp;
+
+    await this.repository.update(order);
+  }
+
+  private async handleOrderConfirmed(event: StoredEvent): Promise<void> {
+    const order = await this.repository.findById(event.aggregateId);
+    if (!order) return;
+
+    order.status = 'confirmed';
+    order.updatedAt = event.timestamp;
+
+    await this.repository.update(order);
+  }
+
+  private calculateTotal(items: any[]): number {
+    return items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+  }
+
+  private async getCustomerName(customerId: string): Promise<string> {
+    // Fetch customer name from customer service or read model
+    return 'Customer Name'; // Placeholder
+  }
+}
+```
+
+## Testing CQRS/ES Systems
+
+```typescript
+// Command Handler Tests
+describe('OrderCommandHandler', () => {
+  let handler: OrderCommandHandler;
+  let mockRepository: jest.Mocked<EventSourcedRepository<OrderAggregate>>;
+  let mockEventBus: jest.Mocked<EventBus>;
+
+  beforeEach(() => {
+    mockRepository = {
+      save: jest.fn(),
+      getById: jest.fn()
+    };
+    mockEventBus = {
+      publishAll: jest.fn()
+    };
+    
+    handler = new OrderCommandHandler(mockRepository, mockEventBus);
+  });
+
+  describe('CreateOrderCommand', () => {
+    it('should create new order aggregate', async () => {
+      const command = new CreateOrderCommand(
+        'cmd-1',
+        'order-1',
+        'customer-1',
+        [{ productId: 'prod-1', quantity: 2, unitPrice: 10.00 }],
+        { street: '123 Main St', city: 'Anytown' },
+        new Date(),
+        'user-1'
+      );
+
+      await handler.handle(command);
+
+      expect(mockRepository.save).toHaveBeenCalledWith(
+        expect.any(OrderAggregate)
+      );
+      expect(mockEventBus.publishAll).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            eventType: 'OrderCreated',
+            aggregateId: 'order-1'
+          })
+        ])
+      );
+    });
+
+    it('should reject command with empty items', async () => {
+      const command = new CreateOrderCommand(
+        'cmd-1',
+        'order-1',
+        'customer-1',
+        [], // Empty items
+        { street: '123 Main St', city: 'Anytown' },
+        new Date(),
+        'user-1'
+      );
+
+      await expect(handler.handle(command)).rejects.toThrow(
+        'Order must have at least one item'
+      );
+    });
+  });
+});
+
+// Event Store Tests
+describe('SqlEventStore', () => {
+  let eventStore: SqlEventStore;
+  let mockConnection: any;
+
+  beforeEach(() => {
+    mockConnection = createMockDatabaseConnection();
+    eventStore = new SqlEventStore(mockConnection);
+  });
+
+  describe('appendEvents', () => {
+    it('should save events with correct version', async () => {
+      const events = [
+        new OrderCreatedEvent('order-1', 1, 'customer-1', [], {}),
+        new OrderConfirmedEvent('order-1', 2, 100.00)
+      ];
+
+      await eventStore.appendEvents('order-1', events, 0);
+
+      expect(mockConnection.transaction).toHaveBeenCalled();
+      expect(mockConnection('events').insert).toHaveBeenCalledTimes(2);
+    });
+
+    it('should detect concurrency conflicts', async () => {
+      mockConnection.getCurrentVersion = jest.fn().mockResolvedValue(5);
+
+      const events = [new OrderCreatedEvent('order-1', 1, 'customer-1', [], {})];
+
+      await expect(
+        eventStore.appendEvents('order-1', events, 3)
+      ).rejects.toThrow('Expected version 3, but current version is 5');
+    });
+  });
+
+  describe('getEvents', () => {
+    it('should return events in correct order', async () => {
+      const mockRows = [
+        {
+          event_id: '1',
+          aggregate_id: 'order-1',
+          event_type: 'OrderCreated',
+          event_version: 1,
+          data: JSON.stringify({ customerId: 'customer-1' }),
+          metadata: JSON.stringify({})
+        },
+        {
+          event_id: '2',
+          aggregate_id: 'order-1',
+          event_type: 'OrderConfirmed',
+          event_version: 2,
+          data: JSON.stringify({ totalAmount: 100.00 }),
+          metadata: JSON.stringify({})
+        }
+      ];
+
+      mockConnection('events').where.mockReturnThis();
+      mockConnection('events').orderBy.mockResolvedValue(mockRows);
+
+      const events = await eventStore.getEvents('order-1');
+
+      expect(events).toHaveLength(2);
+      expect(events[0]).toBeInstanceOf(OrderCreatedEvent);
+      expect(events[1]).toBeInstanceOf(OrderConfirmedEvent);
+    });
+  });
+});
+
+// Projection Tests  
+describe('OrderReadModelProjection', () => {
+  let projection: OrderReadModelProjection;
+  let mockRepository: jest.Mocked<OrderReadModelRepository>;
+
+  beforeEach(() => {
+    mockRepository = {
+      insert: jest.fn(),
+      update: jest.fn(),
+      findById: jest.fn(),
+      deleteAll: jest.fn()
+    };
+    
+    projection = new OrderReadModelProjection(mockRepository);
+  });
+
+  it('should create read model on OrderCreated event', async () => {
+    const event: StoredEvent = {
+      eventId: '1',
+      aggregateId: 'order-1',
+      eventType: 'OrderCreated',
+      data: {
+        customerId: 'customer-1',
+        items: [{ productId: 'prod-1', quantity: 2, unitPrice: 10.00 }]
+      },
+      timestamp: new Date(),
+      globalPosition: 1
+    };
+
+    await projection.handleEvent(event);
+
+    expect(mockRepository.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: 'order-1',
+        customerId: 'customer-1',
+        status: 'pending',
+        totalAmount: 20.00
+      })
+    );
+  });
+
+  it('should update status on OrderConfirmed event', async () => {
+    const existingOrder: OrderReadModel = {
+      orderId: 'order-1',
+      customerId: 'customer-1',
+      status: 'pending',
+      totalAmount: 20.00
+    };
+
+    mockRepository.findById.mockResolvedValue(existingOrder);
+
+    const event: StoredEvent = {
+      eventId: '2',
+      aggregateId: 'order-1',
+      eventType: 'OrderConfirmed',
+      data: { totalAmount: 20.00 },
+      timestamp: new Date(),
+      globalPosition: 2
+    };
+
+    await projection.handleEvent(event);
+
+    expect(mockRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: 'order-1',
+        status: 'confirmed'
+      })
+    );
+  });
+});
+```
+
+## Production Implementation Checklist
+
+- [ ] **Command Validation**: Input validation and business rule enforcement
+- [ ] **Event Schema Versioning**: Backward compatibility for event evolution
+- [ ] **Concurrency Control**: Optimistic locking and conflict resolution
+- [ ] **Projection Monitoring**: Health checks and error handling
+- [ ] **Event Store Performance**: Indexing and query optimization
+- [ ] **Backup Strategy**: Event store backup and disaster recovery
+- [ ] **Security**: Command authorization and event encryption
+- [ ] **Observability**: Logging, metrics, and distributed tracing
+- [ ] **Testing**: Unit tests, integration tests, and projection validation
+- [ ] **Documentation**: Architecture decisions and operational procedures
+
+<Callout type="success">
+Systems implementing CQRS/ES report 10x improvement in read performance, 100% audit compliance, and 50% reduction in data corruption incidents.
+</Callout>
+
+---
+
+*Learn more about implementing CQRS and Event Sourcing in our [Enterprise Architecture Framework](https://github.com/vimasa-consulting/enterprise-architecture-framework).* 

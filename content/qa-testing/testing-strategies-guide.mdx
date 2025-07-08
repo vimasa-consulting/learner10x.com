@@ -1,0 +1,1244 @@
+---
+title: "Comprehensive Testing Strategies Guide"
+description: "Master modern testing strategies from unit tests to end-to-end testing. Learn test-driven development, automation frameworks, and quality assurance best practices for reliable software delivery."
+category: "qa-testing"
+tags: ["testing", "unit-testing", "integration-testing", "e2e-testing", "tdd", "bdd", "test-automation", "quality-assurance"]
+publishedAt: "2024-01-20"
+difficulty: "intermediate"
+externalLinks:
+  - title: "The Art of Unit Testing"
+    url: "https://www.manning.com/books/the-art-of-unit-testing-third-edition"
+    description: "Comprehensive guide to unit testing"
+    category: "books"
+  - title: "Jest Documentation"
+    url: "https://jestjs.io/docs/getting-started"
+    description: "Popular JavaScript testing framework"
+    category: "documentation"
+  - title: "Cypress Testing Framework"
+    url: "https://docs.cypress.io/"
+    description: "Modern end-to-end testing framework"
+    category: "tools"
+  - title: "Testing Library"
+    url: "https://testing-library.com/"
+    description: "Simple and complete testing utilities"
+    category: "libraries"
+  - title: "Test Pyramid by Martin Fowler"
+    url: "https://martinfowler.com/articles/practical-test-pyramid.html"
+    description: "Testing strategy guide by Martin Fowler"
+    category: "articles"
+relatedGuides: ["web-performance-optimization-guide", "devops-practices-guide"]
+---
+
+# Comprehensive Testing Strategies Guide
+
+Build robust, reliable software with comprehensive testing strategies. Master unit testing, integration testing, end-to-end testing, and test automation to deliver high-quality applications with confidence.
+
+## Introduction
+
+Effective testing strategies ensure:
+
+- **Code Quality**: Early detection of bugs and regressions
+- **Confidence**: Safe refactoring and feature development
+- **Documentation**: Tests serve as executable specifications
+- **Maintainability**: Well-tested code is easier to modify
+- **Team Velocity**: Faster development with fewer production issues
+
+<Callout type="info">
+Teams with comprehensive testing strategies report 40% fewer production bugs, 60% faster feature delivery, and 50% reduction in debugging time.
+</Callout>
+
+## Testing Pyramid Strategy
+
+### Unit Testing Foundation
+
+```typescript
+// Unit Testing Examples with Jest
+describe('OrderService', () => {
+  let orderService: OrderService;
+  let mockOrderRepository: jest.Mocked<OrderRepository>;
+  let mockPaymentService: jest.Mocked<PaymentService>;
+  let mockInventoryService: jest.Mocked<InventoryService>;
+
+  beforeEach(() => {
+    mockOrderRepository = {
+      save: jest.fn(),
+      findById: jest.fn(),
+      findByCustomerId: jest.fn(),
+      delete: jest.fn()
+    };
+
+    mockPaymentService = {
+      processPayment: jest.fn(),
+      refundPayment: jest.fn(),
+      validatePaymentMethod: jest.fn()
+    };
+
+    mockInventoryService = {
+      checkAvailability: jest.fn(),
+      reserveItems: jest.fn(),
+      releaseItems: jest.fn()
+    };
+
+    orderService = new OrderService(
+      mockOrderRepository,
+      mockPaymentService,
+      mockInventoryService
+    );
+  });
+
+  describe('createOrder', () => {
+    it('should create order with valid data', async () => {
+      // Arrange
+      const orderData: CreateOrderDto = {
+        customerId: 'customer-123',
+        items: [
+          { productId: 'product-1', quantity: 2, price: 29.99 },
+          { productId: 'product-2', quantity: 1, price: 49.99 }
+        ],
+        shippingAddress: {
+          street: '123 Main St',
+          city: 'Anytown',
+          state: 'CA',
+          zipCode: '12345'
+        }
+      };
+
+      const expectedOrder = new Order(
+        'order-123',
+        orderData.customerId,
+        orderData.items,
+        orderData.shippingAddress
+      );
+
+      mockInventoryService.checkAvailability.mockResolvedValue(true);
+      mockInventoryService.reserveItems.mockResolvedValue('reservation-123');
+      mockOrderRepository.save.mockResolvedValue(expectedOrder);
+
+      // Act
+      const result = await orderService.createOrder(orderData);
+
+      // Assert
+      expect(result).toEqual(expectedOrder);
+      expect(mockInventoryService.checkAvailability).toHaveBeenCalledWith(orderData.items);
+      expect(mockInventoryService.reserveItems).toHaveBeenCalledWith(orderData.items);
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(expect.any(Order));
+    });
+
+    it('should throw error when inventory unavailable', async () => {
+      // Arrange
+      const orderData: CreateOrderDto = {
+        customerId: 'customer-123',
+        items: [{ productId: 'product-1', quantity: 100, price: 29.99 }]
+      };
+
+      mockInventoryService.checkAvailability.mockResolvedValue(false);
+
+      // Act & Assert
+      await expect(orderService.createOrder(orderData)).rejects.toThrow(
+        'Insufficient inventory for order'
+      );
+
+      expect(mockInventoryService.reserveItems).not.toHaveBeenCalled();
+      expect(mockOrderRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should calculate total amount correctly', async () => {
+      // Arrange
+      const orderData: CreateOrderDto = {
+        customerId: 'customer-123',
+        items: [
+          { productId: 'product-1', quantity: 2, price: 29.99 },
+          { productId: 'product-2', quantity: 3, price: 15.50 }
+        ]
+      };
+
+      mockInventoryService.checkAvailability.mockResolvedValue(true);
+      mockInventoryService.reserveItems.mockResolvedValue('reservation-123');
+
+      const savedOrder = jest.fn();
+      mockOrderRepository.save.mockImplementation(savedOrder);
+
+      // Act
+      await orderService.createOrder(orderData);
+
+      // Assert
+      const orderArgument = savedOrder.mock.calls[0][0];
+      expect(orderArgument.getTotalAmount()).toBe(106.48); // (2 * 29.99) + (3 * 15.50)
+    });
+  });
+
+  describe('processPayment', () => {
+    it('should process payment and update order status', async () => {
+      // Arrange
+      const orderId = 'order-123';
+      const order = new Order(orderId, 'customer-123', [], {});
+      order.setStatus('pending');
+
+      const paymentResult = {
+        success: true,
+        transactionId: 'txn-123',
+        amount: 109.98
+      };
+
+      mockOrderRepository.findById.mockResolvedValue(order);
+      mockPaymentService.processPayment.mockResolvedValue(paymentResult);
+      mockOrderRepository.save.mockResolvedValue(order);
+
+      // Act
+      const result = await orderService.processPayment(orderId, {
+        paymentMethod: 'credit_card',
+        amount: 109.98
+      });
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(order.getStatus()).toBe('paid');
+      expect(order.getTransactionId()).toBe('txn-123');
+      expect(mockPaymentService.processPayment).toHaveBeenCalledWith({
+        paymentMethod: 'credit_card',
+        amount: 109.98
+      });
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(order);
+    });
+
+    it('should handle payment failure gracefully', async () => {
+      // Arrange
+      const orderId = 'order-123';
+      const order = new Order(orderId, 'customer-123', [], {});
+
+      mockOrderRepository.findById.mockResolvedValue(order);
+      mockPaymentService.processPayment.mockRejectedValue(
+        new PaymentError('Credit card declined')
+      );
+
+      // Act
+      const result = await orderService.processPayment(orderId, {
+        paymentMethod: 'credit_card',
+        amount: 109.98
+      });
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Credit card declined');
+      expect(order.getStatus()).toBe('payment_failed');
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(order);
+    });
+  });
+});
+
+// Testing Value Objects
+describe('Money', () => {
+  describe('constructor', () => {
+    it('should create money with valid amount and currency', () => {
+      const money = new Money(100.50, 'USD');
+      
+      expect(money.getAmount()).toBe(100.50);
+      expect(money.getCurrency()).toBe('USD');
+    });
+
+    it('should throw error for negative amount', () => {
+      expect(() => new Money(-10, 'USD')).toThrow('Amount cannot be negative');
+    });
+
+    it('should throw error for invalid currency', () => {
+      expect(() => new Money(100, 'INVALID')).toThrow('Invalid currency code');
+    });
+  });
+
+  describe('add', () => {
+    it('should add money with same currency', () => {
+      const money1 = new Money(100, 'USD');
+      const money2 = new Money(50, 'USD');
+      
+      const result = money1.add(money2);
+      
+      expect(result.getAmount()).toBe(150);
+      expect(result.getCurrency()).toBe('USD');
+    });
+
+    it('should throw error when adding different currencies', () => {
+      const money1 = new Money(100, 'USD');
+      const money2 = new Money(50, 'EUR');
+      
+      expect(() => money1.add(money2)).toThrow('Cannot add different currencies');
+    });
+  });
+
+  describe('equals', () => {
+    it('should return true for equal money objects', () => {
+      const money1 = new Money(100, 'USD');
+      const money2 = new Money(100, 'USD');
+      
+      expect(money1.equals(money2)).toBe(true);
+    });
+
+    it('should return false for different amounts', () => {
+      const money1 = new Money(100, 'USD');
+      const money2 = new Money(200, 'USD');
+      
+      expect(money1.equals(money2)).toBe(false);
+    });
+
+    it('should return false for different currencies', () => {
+      const money1 = new Money(100, 'USD');
+      const money2 = new Money(100, 'EUR');
+      
+      expect(money1.equals(money2)).toBe(false);
+    });
+  });
+});
+
+// Test Utilities and Helpers
+class TestDataBuilder {
+  static createOrder(overrides: Partial<CreateOrderDto> = {}): CreateOrderDto {
+    return {
+      customerId: 'customer-123',
+      items: [
+        { productId: 'product-1', quantity: 1, price: 29.99 }
+      ],
+      shippingAddress: {
+        street: '123 Main St',
+        city: 'Anytown',
+        state: 'CA',
+        zipCode: '12345'
+      },
+      ...overrides
+    };
+  }
+
+  static createCustomer(overrides: Partial<CustomerDto> = {}): CustomerDto {
+    return {
+      id: 'customer-123',
+      email: 'test@example.com',
+      firstName: 'John',
+      lastName: 'Doe',
+      phone: '+1-555-0123',
+      ...overrides
+    };
+  }
+
+  static createProduct(overrides: Partial<ProductDto> = {}): ProductDto {
+    return {
+      id: 'product-123',
+      name: 'Test Product',
+      price: 29.99,
+      category: 'electronics',
+      inStock: true,
+      inventory: 100,
+      ...overrides
+    };
+  }
+}
+```
+
+### Integration Testing
+
+```typescript
+// Integration Testing with Test Containers
+import { GenericContainer, StartedTestContainer } from 'testcontainers';
+import { DataSource } from 'typeorm';
+
+describe('OrderRepository Integration Tests', () => {
+  let container: StartedTestContainer;
+  let dataSource: DataSource;
+  let orderRepository: OrderRepository;
+
+  beforeAll(async () => {
+    // Start PostgreSQL container
+    container = await new GenericContainer('postgres:13')
+      .withExposedPorts(5432)
+      .withEnvironment({
+        POSTGRES_DB: 'testdb',
+        POSTGRES_USER: 'testuser',
+        POSTGRES_PASSWORD: 'testpass'
+      })
+      .start();
+
+    // Setup database connection
+    dataSource = new DataSource({
+      type: 'postgres',
+      host: container.getHost(),
+      port: container.getMappedPort(5432),
+      username: 'testuser',
+      password: 'testpass',
+      database: 'testdb',
+      entities: [Order, OrderItem],
+      synchronize: true,
+      dropSchema: true
+    });
+
+    await dataSource.initialize();
+    orderRepository = new OrderRepository(dataSource);
+  });
+
+  afterAll(async () => {
+    await dataSource.destroy();
+    await container.stop();
+  });
+
+  beforeEach(async () => {
+    // Clean database before each test
+    await dataSource.query('TRUNCATE orders, order_items CASCADE');
+  });
+
+  describe('save and findById', () => {
+    it('should save and retrieve order correctly', async () => {
+      // Arrange
+      const order = new Order(
+        'order-123',
+        'customer-123',
+        [
+          new OrderItem('item-1', 'product-1', 2, 29.99),
+          new OrderItem('item-2', 'product-2', 1, 49.99)
+        ],
+        {
+          street: '123 Main St',
+          city: 'Anytown',
+          state: 'CA',
+          zipCode: '12345'
+        }
+      );
+
+      // Act
+      await orderRepository.save(order);
+      const retrievedOrder = await orderRepository.findById('order-123');
+
+      // Assert
+      expect(retrievedOrder).toBeDefined();
+      expect(retrievedOrder!.getId()).toBe('order-123');
+      expect(retrievedOrder!.getCustomerId()).toBe('customer-123');
+      expect(retrievedOrder!.getItems()).toHaveLength(2);
+      expect(retrievedOrder!.getTotalAmount()).toBe(109.97);
+    });
+
+    it('should handle order with no items', async () => {
+      // Arrange
+      const order = new Order('order-123', 'customer-123', [], {});
+
+      // Act
+      await orderRepository.save(order);
+      const retrievedOrder = await orderRepository.findById('order-123');
+
+      // Assert
+      expect(retrievedOrder).toBeDefined();
+      expect(retrievedOrder!.getItems()).toHaveLength(0);
+      expect(retrievedOrder!.getTotalAmount()).toBe(0);
+    });
+  });
+
+  describe('findByCustomerId', () => {
+    it('should return orders for specific customer', async () => {
+      // Arrange
+      const order1 = new Order('order-1', 'customer-123', [], {});
+      const order2 = new Order('order-2', 'customer-123', [], {});
+      const order3 = new Order('order-3', 'customer-456', [], {});
+
+      await orderRepository.save(order1);
+      await orderRepository.save(order2);
+      await orderRepository.save(order3);
+
+      // Act
+      const customerOrders = await orderRepository.findByCustomerId('customer-123');
+
+      // Assert
+      expect(customerOrders).toHaveLength(2);
+      expect(customerOrders.map(o => o.getId())).toContain('order-1');
+      expect(customerOrders.map(o => o.getId())).toContain('order-2');
+      expect(customerOrders.map(o => o.getId())).not.toContain('order-3');
+    });
+  });
+
+  describe('transaction handling', () => {
+    it('should rollback on error', async () => {
+      // Arrange
+      const order = new Order('order-123', 'customer-123', [], {});
+      
+      // Simulate a database constraint violation
+      jest.spyOn(dataSource, 'query').mockRejectedValueOnce(
+        new Error('Constraint violation')
+      );
+
+      // Act & Assert
+      await expect(orderRepository.save(order)).rejects.toThrow('Constraint violation');
+      
+      // Verify order was not saved
+      const retrievedOrder = await orderRepository.findById('order-123');
+      expect(retrievedOrder).toBeNull();
+    });
+  });
+});
+
+// API Integration Testing
+describe('Orders API Integration Tests', () => {
+  let app: Application;
+  let server: Server;
+  let agent: supertest.SuperTest<supertest.Test>;
+
+  beforeAll(async () => {
+    app = await createTestApp();
+    server = app.listen(0);
+    agent = supertest(app);
+  });
+
+  afterAll(async () => {
+    await server.close();
+  });
+
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  describe('POST /api/orders', () => {
+    it('should create order with valid data', async () => {
+      // Arrange
+      const orderData = {
+        customerId: 'customer-123',
+        items: [
+          { productId: 'product-1', quantity: 2 },
+          { productId: 'product-2', quantity: 1 }
+        ],
+        shippingAddress: {
+          street: '123 Main St',
+          city: 'Anytown',
+          state: 'CA',
+          zipCode: '12345'
+        }
+      };
+
+      // Act
+      const response = await agent
+        .post('/api/orders')
+        .send(orderData)
+        .set('Authorization', 'Bearer valid-token')
+        .expect(201);
+
+      // Assert
+      expect(response.body).toHaveProperty('id');
+      expect(response.body.customerId).toBe('customer-123');
+      expect(response.body.items).toHaveLength(2);
+      expect(response.body.status).toBe('pending');
+    });
+
+    it('should return 400 for invalid order data', async () => {
+      // Arrange
+      const invalidOrderData = {
+        customerId: '', // Invalid: empty customer ID
+        items: [], // Invalid: no items
+      };
+
+      // Act
+      const response = await agent
+        .post('/api/orders')
+        .send(invalidOrderData)
+        .set('Authorization', 'Bearer valid-token')
+        .expect(400);
+
+      // Assert
+      expect(response.body).toHaveProperty('errors');
+      expect(response.body.errors).toContain('Customer ID is required');
+      expect(response.body.errors).toContain('Order must have at least one item');
+    });
+
+    it('should return 401 for unauthorized requests', async () => {
+      // Act
+      await agent
+        .post('/api/orders')
+        .send({ customerId: 'customer-123', items: [] })
+        .expect(401);
+    });
+  });
+
+  describe('GET /api/orders/:id', () => {
+    it('should return order by ID', async () => {
+      // Arrange
+      const order = await createTestOrder();
+
+      // Act
+      const response = await agent
+        .get(`/api/orders/${order.id}`)
+        .set('Authorization', 'Bearer valid-token')
+        .expect(200);
+
+      // Assert
+      expect(response.body.id).toBe(order.id);
+      expect(response.body.customerId).toBe(order.customerId);
+    });
+
+    it('should return 404 for non-existent order', async () => {
+      // Act
+      await agent
+        .get('/api/orders/non-existent-id')
+        .set('Authorization', 'Bearer valid-token')
+        .expect(404);
+    });
+  });
+});
+```
+
+### End-to-End Testing
+
+```typescript
+// Cypress E2E Tests
+describe('Order Management Flow', () => {
+  beforeEach(() => {
+    // Setup test data
+    cy.setupTestData();
+    
+    // Login as test user
+    cy.login('test@example.com', 'password123');
+  });
+
+  it('should complete full order workflow', () => {
+    // Navigate to products page
+    cy.visit('/products');
+    cy.url().should('include', '/products');
+
+    // Add products to cart
+    cy.get('[data-testid="product-card"]').first().within(() => {
+      cy.get('[data-testid="add-to-cart"]').click();
+    });
+
+    cy.get('[data-testid="cart-notification"]')
+      .should('be.visible')
+      .and('contain', 'Product added to cart');
+
+    // View cart
+    cy.get('[data-testid="cart-icon"]').click();
+    cy.get('[data-testid="cart-items"]').should('have.length', 1);
+
+    // Proceed to checkout
+    cy.get('[data-testid="checkout-button"]').click();
+    cy.url().should('include', '/checkout');
+
+    // Fill shipping information
+    cy.get('[data-testid="shipping-form"]').within(() => {
+      cy.get('[name="firstName"]').type('John');
+      cy.get('[name="lastName"]').type('Doe');
+      cy.get('[name="street"]').type('123 Main St');
+      cy.get('[name="city"]').type('Anytown');
+      cy.get('[name="state"]').select('CA');
+      cy.get('[name="zipCode"]').type('12345');
+    });
+
+    // Fill payment information
+    cy.get('[data-testid="payment-form"]').within(() => {
+      cy.get('[name="cardNumber"]').type('4242424242424242');
+      cy.get('[name="expiryDate"]').type('12/25');
+      cy.get('[name="cvv"]').type('123');
+      cy.get('[name="cardholderName"]').type('John Doe');
+    });
+
+    // Submit order
+    cy.get('[data-testid="submit-order"]').click();
+
+    // Verify order confirmation
+    cy.url().should('include', '/order-confirmation');
+    cy.get('[data-testid="order-number"]').should('be.visible');
+    cy.get('[data-testid="confirmation-message"]')
+      .should('contain', 'Your order has been placed successfully');
+
+    // Verify order appears in account
+    cy.visit('/account/orders');
+    cy.get('[data-testid="order-list"]')
+      .should('contain', 'Order #')
+      .and('contain', 'Pending');
+  });
+
+  it('should handle payment failure gracefully', () => {
+    // Add product to cart
+    cy.addProductToCart('test-product-1');
+
+    // Navigate to checkout
+    cy.get('[data-testid="checkout-button"]').click();
+
+    // Fill forms with invalid payment info
+    cy.fillShippingForm({
+      firstName: 'John',
+      lastName: 'Doe',
+      street: '123 Main St',
+      city: 'Anytown',
+      state: 'CA',
+      zipCode: '12345'
+    });
+
+    cy.fillPaymentForm({
+      cardNumber: '4000000000000002', // Declined card
+      expiryDate: '12/25',
+      cvv: '123',
+      cardholderName: 'John Doe'
+    });
+
+    // Submit order
+    cy.get('[data-testid="submit-order"]').click();
+
+    // Verify error handling
+    cy.get('[data-testid="payment-error"]')
+      .should('be.visible')
+      .and('contain', 'Payment declined');
+
+    // Verify user can retry
+    cy.get('[data-testid="retry-payment"]').should('be.visible');
+    cy.url().should('include', '/checkout');
+  });
+
+  it('should be accessible', () => {
+    cy.visit('/products');
+    cy.injectAxe();
+    cy.checkA11y();
+
+    cy.visit('/checkout');
+    cy.checkA11y();
+  });
+
+  it('should work on mobile devices', () => {
+    cy.viewport('iphone-x');
+    
+    cy.visit('/products');
+    cy.get('[data-testid="mobile-menu"]').click();
+    cy.get('[data-testid="nav-menu"]').should('be.visible');
+
+    // Mobile-specific interactions
+    cy.get('[data-testid="product-card"]').first().within(() => {
+      cy.get('[data-testid="add-to-cart"]').should('be.visible').click();
+    });
+
+    cy.get('[data-testid="cart-icon"]').click();
+    cy.get('[data-testid="mobile-cart"]').should('be.visible');
+  });
+});
+
+// Custom Cypress Commands
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      login(email: string, password: string): Chainable<void>;
+      setupTestData(): Chainable<void>;
+      addProductToCart(productId: string): Chainable<void>;
+      fillShippingForm(data: ShippingFormData): Chainable<void>;
+      fillPaymentForm(data: PaymentFormData): Chainable<void>;
+    }
+  }
+}
+
+Cypress.Commands.add('login', (email: string, password: string) => {
+  cy.session([email, password], () => {
+    cy.visit('/login');
+    cy.get('[name="email"]').type(email);
+    cy.get('[name="password"]').type(password);
+    cy.get('[data-testid="login-button"]').click();
+    cy.url().should('not.include', '/login');
+  });
+});
+
+Cypress.Commands.add('setupTestData', () => {
+  cy.task('db:seed');
+});
+
+Cypress.Commands.add('addProductToCart', (productId: string) => {
+  cy.visit('/products');
+  cy.get(`[data-testid="product-${productId}"]`).within(() => {
+    cy.get('[data-testid="add-to-cart"]').click();
+  });
+});
+
+Cypress.Commands.add('fillShippingForm', (data: ShippingFormData) => {
+  cy.get('[data-testid="shipping-form"]').within(() => {
+    Object.entries(data).forEach(([field, value]) => {
+      if (field === 'state') {
+        cy.get(`[name="${field}"]`).select(value);
+      } else {
+        cy.get(`[name="${field}"]`).type(value);
+      }
+    });
+  });
+});
+
+Cypress.Commands.add('fillPaymentForm', (data: PaymentFormData) => {
+  cy.get('[data-testid="payment-form"]').within(() => {
+    Object.entries(data).forEach(([field, value]) => {
+      cy.get(`[name="${field}"]`).type(value);
+    });
+  });
+});
+```
+
+## Test-Driven Development (TDD)
+
+```typescript
+// TDD Example: Shopping Cart Feature
+describe('ShoppingCart TDD', () => {
+  describe('Red Phase - Write failing tests first', () => {
+    it('should be empty when created', () => {
+      const cart = new ShoppingCart();
+      expect(cart.getItems()).toHaveLength(0);
+      expect(cart.getTotalAmount()).toBe(0);
+    });
+
+    it('should add item to cart', () => {
+      const cart = new ShoppingCart();
+      const item = new CartItem('product-1', 2, 29.99);
+      
+      cart.addItem(item);
+      
+      expect(cart.getItems()).toHaveLength(1);
+      expect(cart.getItems()[0]).toEqual(item);
+    });
+
+    it('should calculate total amount correctly', () => {
+      const cart = new ShoppingCart();
+      cart.addItem(new CartItem('product-1', 2, 29.99));
+      cart.addItem(new CartItem('product-2', 1, 49.99));
+      
+      expect(cart.getTotalAmount()).toBe(109.97);
+    });
+
+    it('should update quantity when adding same product', () => {
+      const cart = new ShoppingCart();
+      cart.addItem(new CartItem('product-1', 2, 29.99));
+      cart.addItem(new CartItem('product-1', 3, 29.99));
+      
+      expect(cart.getItems()).toHaveLength(1);
+      expect(cart.getItems()[0].getQuantity()).toBe(5);
+    });
+
+    it('should remove item from cart', () => {
+      const cart = new ShoppingCart();
+      cart.addItem(new CartItem('product-1', 2, 29.99));
+      
+      cart.removeItem('product-1');
+      
+      expect(cart.getItems()).toHaveLength(0);
+      expect(cart.getTotalAmount()).toBe(0);
+    });
+
+    it('should clear all items', () => {
+      const cart = new ShoppingCart();
+      cart.addItem(new CartItem('product-1', 2, 29.99));
+      cart.addItem(new CartItem('product-2', 1, 49.99));
+      
+      cart.clear();
+      
+      expect(cart.getItems()).toHaveLength(0);
+      expect(cart.getTotalAmount()).toBe(0);
+    });
+  });
+
+  describe('Green Phase - Implement minimal code to pass tests', () => {
+    // Implementation would go here
+    class ShoppingCart {
+      private items: CartItem[] = [];
+
+      getItems(): CartItem[] {
+        return [...this.items];
+      }
+
+      getTotalAmount(): number {
+        return this.items.reduce((total, item) => 
+          total + (item.getQuantity() * item.getPrice()), 0
+        );
+      }
+
+      addItem(newItem: CartItem): void {
+        const existingItem = this.items.find(
+          item => item.getProductId() === newItem.getProductId()
+        );
+
+        if (existingItem) {
+          existingItem.updateQuantity(
+            existingItem.getQuantity() + newItem.getQuantity()
+          );
+        } else {
+          this.items.push(newItem);
+        }
+      }
+
+      removeItem(productId: string): void {
+        this.items = this.items.filter(
+          item => item.getProductId() !== productId
+        );
+      }
+
+      clear(): void {
+        this.items = [];
+      }
+    }
+
+    class CartItem {
+      constructor(
+        private productId: string,
+        private quantity: number,
+        private price: number
+      ) {}
+
+      getProductId(): string { return this.productId; }
+      getQuantity(): number { return this.quantity; }
+      getPrice(): number { return this.price; }
+
+      updateQuantity(newQuantity: number): void {
+        this.quantity = newQuantity;
+      }
+    }
+  });
+
+  describe('Refactor Phase - Improve code while keeping tests green', () => {
+    // Add validation and edge cases
+    it('should throw error for negative quantity', () => {
+      const cart = new ShoppingCart();
+      
+      expect(() => {
+        cart.addItem(new CartItem('product-1', -1, 29.99));
+      }).toThrow('Quantity must be positive');
+    });
+
+    it('should throw error for negative price', () => {
+      expect(() => {
+        new CartItem('product-1', 1, -29.99);
+      }).toThrow('Price must be positive');
+    });
+
+    it('should handle empty product ID', () => {
+      expect(() => {
+        new CartItem('', 1, 29.99);
+      }).toThrow('Product ID cannot be empty');
+    });
+  });
+});
+```
+
+## Behavior-Driven Development (BDD)
+
+```typescript
+// BDD with Cucumber-style tests
+import { Given, When, Then, Before, After } from '@cucumber/cucumber';
+
+// Feature: Order Processing
+// Scenario: Successful order creation
+//   Given a customer with ID "customer-123"
+//   And the customer has a valid payment method
+//   And products are available in inventory
+//   When the customer creates an order with 2 "iPhone 14" and 1 "AirPods Pro"
+//   Then the order should be created successfully
+//   And the order status should be "pending"
+//   And the customer should receive an order confirmation email
+
+class OrderProcessingSteps {
+  private customer: Customer | null = null;
+  private order: Order | null = null;
+  private orderService: OrderService;
+  private emailService: EmailService;
+  private result: any;
+
+  constructor() {
+    this.orderService = new OrderService();
+    this.emailService = new EmailService();
+  }
+
+  @Given('a customer with ID {string}')
+  async givenCustomerWithId(customerId: string) {
+    this.customer = await this.createTestCustomer(customerId);
+  }
+
+  @Given('the customer has a valid payment method')
+  async givenCustomerHasValidPaymentMethod() {
+    if (!this.customer) throw new Error('Customer not set');
+    
+    await this.customer.addPaymentMethod({
+      type: 'credit_card',
+      cardNumber: '4242424242424242',
+      expiryDate: '12/25',
+      cvv: '123'
+    });
+  }
+
+  @Given('products are available in inventory')
+  async givenProductsAreAvailable() {
+    await this.setupInventory([
+      { productId: 'iphone-14', quantity: 100 },
+      { productId: 'airpods-pro', quantity: 50 }
+    ]);
+  }
+
+  @When('the customer creates an order with {int} {string} and {int} {string}')
+  async whenCustomerCreatesOrder(qty1: number, product1: string, qty2: number, product2: string) {
+    if (!this.customer) throw new Error('Customer not set');
+
+    const orderData = {
+      customerId: this.customer.getId(),
+      items: [
+        { productId: this.getProductId(product1), quantity: qty1 },
+        { productId: this.getProductId(product2), quantity: qty2 }
+      ]
+    };
+
+    try {
+      this.result = await this.orderService.createOrder(orderData);
+      this.order = this.result.order;
+    } catch (error) {
+      this.result = { error };
+    }
+  }
+
+  @Then('the order should be created successfully')
+  thenOrderCreatedSuccessfully() {
+    expect(this.result.error).toBeUndefined();
+    expect(this.order).toBeDefined();
+    expect(this.order!.getId()).toBeDefined();
+  }
+
+  @Then('the order status should be {string}')
+  thenOrderStatusShouldBe(expectedStatus: string) {
+    expect(this.order!.getStatus()).toBe(expectedStatus);
+  }
+
+  @Then('the customer should receive an order confirmation email')
+  async thenCustomerReceivesConfirmationEmail() {
+    const emails = await this.emailService.getSentEmails();
+    const confirmationEmail = emails.find(email => 
+      email.to === this.customer!.getEmail() &&
+      email.subject.includes('Order Confirmation')
+    );
+    
+    expect(confirmationEmail).toBeDefined();
+  }
+
+  private async createTestCustomer(customerId: string): Promise<Customer> {
+    return new Customer(customerId, 'test@example.com', 'John', 'Doe');
+  }
+
+  private async setupInventory(items: Array<{ productId: string; quantity: number }>): Promise<void> {
+    // Setup test inventory
+  }
+
+  private getProductId(productName: string): string {
+    const productMap: Record<string, string> = {
+      'iPhone 14': 'iphone-14',
+      'AirPods Pro': 'airpods-pro'
+    };
+    return productMap[productName] || productName.toLowerCase().replace(/\s+/g, '-');
+  }
+}
+
+// Page Object Model for E2E Tests
+class ProductsPage {
+  private page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
+
+  async navigate(): Promise<void> {
+    await this.page.goto('/products');
+  }
+
+  async searchProduct(productName: string): Promise<void> {
+    await this.page.fill('[data-testid="search-input"]', productName);
+    await this.page.click('[data-testid="search-button"]');
+  }
+
+  async addToCart(productId: string): Promise<void> {
+    await this.page.click(`[data-testid="add-to-cart-${productId}"]`);
+  }
+
+  async getProductPrice(productId: string): Promise<number> {
+    const priceText = await this.page.textContent(`[data-testid="price-${productId}"]`);
+    return parseFloat(priceText!.replace('$', ''));
+  }
+
+  async isProductInStock(productId: string): Promise<boolean> {
+    const stockStatus = await this.page.textContent(`[data-testid="stock-${productId}"]`);
+    return stockStatus === 'In Stock';
+  }
+}
+
+class CheckoutPage {
+  private page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
+
+  async fillShippingInformation(shippingInfo: ShippingInfo): Promise<void> {
+    await this.page.fill('[name="firstName"]', shippingInfo.firstName);
+    await this.page.fill('[name="lastName"]', shippingInfo.lastName);
+    await this.page.fill('[name="street"]', shippingInfo.street);
+    await this.page.fill('[name="city"]', shippingInfo.city);
+    await this.page.selectOption('[name="state"]', shippingInfo.state);
+    await this.page.fill('[name="zipCode"]', shippingInfo.zipCode);
+  }
+
+  async fillPaymentInformation(paymentInfo: PaymentInfo): Promise<void> {
+    await this.page.fill('[name="cardNumber"]', paymentInfo.cardNumber);
+    await this.page.fill('[name="expiryDate"]', paymentInfo.expiryDate);
+    await this.page.fill('[name="cvv"]', paymentInfo.cvv);
+    await this.page.fill('[name="cardholderName"]', paymentInfo.cardholderName);
+  }
+
+  async submitOrder(): Promise<void> {
+    await this.page.click('[data-testid="submit-order"]');
+  }
+
+  async getOrderTotal(): Promise<number> {
+    const totalText = await this.page.textContent('[data-testid="order-total"]');
+    return parseFloat(totalText!.replace('$', ''));
+  }
+}
+```
+
+## Performance Testing
+
+```typescript
+// Load Testing with Artillery.js
+const loadTestConfig = {
+  config: {
+    target: 'http://localhost:3000',
+    phases: [
+      { duration: 60, arrivalRate: 5 }, // Warm up
+      { duration: 120, arrivalRate: 10 }, // Ramp up
+      { duration: 300, arrivalRate: 20 }, // Sustained load
+      { duration: 60, arrivalRate: 5 }  // Cool down
+    ],
+    payload: {
+      path: './test-data.csv',
+      fields: ['customerId', 'productId', 'quantity']
+    }
+  },
+  scenarios: [
+    {
+      name: 'Create Order Scenario',
+      weight: 60,
+      flow: [
+        {
+          post: {
+            url: '/api/auth/login',
+            json: {
+              email: 'test@example.com',
+              password: 'password123'
+            },
+            capture: {
+              json: '$.token',
+              as: 'authToken'
+            }
+          }
+        },
+        {
+          post: {
+            url: '/api/orders',
+            headers: {
+              Authorization: 'Bearer {{ authToken }}'
+            },
+            json: {
+              customerId: '{{ customerId }}',
+              items: [
+                {
+                  productId: '{{ productId }}',
+                  quantity: '{{ quantity }}'
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      name: 'Browse Products Scenario',
+      weight: 40,
+      flow: [
+        {
+          get: {
+            url: '/api/products'
+          }
+        },
+        {
+          get: {
+            url: '/api/products/{{ productId }}'
+          }
+        }
+      ]
+    }
+  ]
+};
+
+// Performance Assertions
+class PerformanceMonitor {
+  private metrics: PerformanceMetric[] = [];
+
+  startTiming(operation: string): PerformanceTimer {
+    const startTime = performance.now();
+    
+    return {
+      end: () => {
+        const endTime = performance.now();
+        const duration = endTime - startTime;
+        
+        this.metrics.push({
+          operation,
+          duration,
+          timestamp: new Date()
+        });
+        
+        return duration;
+      }
+    };
+  }
+
+  assertResponseTime(operation: string, maxDuration: number): void {
+    const operationMetrics = this.metrics.filter(m => m.operation === operation);
+    const averageDuration = operationMetrics.reduce((sum, m) => sum + m.duration, 0) / operationMetrics.length;
+    
+    expect(averageDuration).toBeLessThan(maxDuration);
+  }
+
+  assertThroughput(operation: string, minOperationsPerSecond: number): void {
+    const operationMetrics = this.metrics.filter(m => m.operation === operation);
+    const timeSpan = Math.max(...operationMetrics.map(m => m.timestamp.getTime())) - 
+                   Math.min(...operationMetrics.map(m => m.timestamp.getTime()));
+    const throughput = (operationMetrics.length / timeSpan) * 1000; // ops per second
+    
+    expect(throughput).toBeGreaterThan(minOperationsPerSecond);
+  }
+}
+
+// Usage in tests
+describe('Performance Tests', () => {
+  let monitor: PerformanceMonitor;
+
+  beforeEach(() => {
+    monitor = new PerformanceMonitor();
+  });
+
+  it('should create orders within performance budget', async () => {
+    const timer = monitor.startTiming('createOrder');
+    
+    await orderService.createOrder({
+      customerId: 'customer-123',
+      items: [{ productId: 'product-1', quantity: 1 }]
+    });
+    
+    const duration = timer.end();
+    
+    expect(duration).toBeLessThan(200); // 200ms max
+    monitor.assertResponseTime('createOrder', 200);
+  });
+});
+```
+
+## Production Implementation Checklist
+
+- [ ] **Test Coverage**: Minimum 80% code coverage across all layers
+- [ ] **Test Types**: Unit, integration, e2e, and performance tests
+- [ ] **Test Automation**: CI/CD pipeline with automated test execution
+- [ ] **Test Data Management**: Isolated test data and database seeding
+- [ ] **Performance Testing**: Load testing and performance budgets
+- [ ] **Security Testing**: OWASP testing and vulnerability scanning
+- [ ] **Accessibility Testing**: A11y testing with automated tools
+- [ ] **Cross-browser Testing**: Testing across different browsers and devices
+- [ ] **API Testing**: Contract testing and API documentation validation
+- [ ] **Monitoring**: Test metrics, flaky test detection, and reporting
+
+<Callout type="success">
+Teams with comprehensive testing strategies report 40% fewer production bugs, 60% faster feature delivery, and 50% reduction in debugging time.
+</Callout>
+
+---
+
+*Implement our complete [Testing Framework](https://github.com/vimasa-consulting/testing-framework) for robust, reliable software delivery.* 

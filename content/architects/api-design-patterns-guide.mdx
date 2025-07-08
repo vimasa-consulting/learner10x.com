@@ -1,0 +1,1482 @@
+---
+title: "API Design Patterns for Enterprise Systems"
+description: "Master REST, GraphQL, and gRPC API design patterns. Learn versioning strategies, authentication patterns, and best practices for scalable, maintainable APIs."
+category: "architects"
+tags: ["api-design", "rest", "graphql", "grpc", "api-versioning", "authentication", "rate-limiting", "api-gateway"]
+publishedAt: "2024-01-17"
+difficulty: "intermediate"
+externalLinks:
+  - title: "RESTful Web APIs by Leonard Richardson"
+    url: "https://www.amazon.com/RESTful-Web-APIs-Leonard-Richardson/dp/1449358063"
+    description: "Comprehensive guide to REST API design"
+    category: "books"
+  - title: "GraphQL Specification"
+    url: "https://spec.graphql.org/"
+    description: "Official GraphQL specification"
+    category: "documentation"
+  - title: "gRPC Documentation"
+    url: "https://grpc.io/docs/"
+    description: "Official gRPC documentation"
+    category: "documentation"
+  - title: "OpenAPI Specification"
+    url: "https://swagger.io/specification/"
+    description: "OpenAPI 3.0 specification for REST APIs"
+    category: "specifications"
+  - title: "API Design Guidelines by Microsoft"
+    url: "https://github.com/Microsoft/api-guidelines"
+    description: "Microsoft's API design guidelines"
+    category: "guidelines"
+relatedGuides: ["microservices-architecture-guide", "domain-driven-design-guide", "cqrs-event-sourcing-guide"]
+---
+
+# API Design Patterns for Enterprise Systems
+
+Design robust, scalable APIs using proven patterns and best practices. Master REST, GraphQL, and gRPC design principles, implement effective versioning strategies, and build secure, performant API ecosystems.
+
+## Introduction
+
+Modern API design requires:
+
+- **Protocol Selection**: Choose between REST, GraphQL, and gRPC based on use case
+- **Consistency**: Standardized patterns across your API ecosystem
+- **Versioning**: Backward compatibility and smooth migration strategies
+- **Security**: Authentication, authorization, and threat protection
+- **Performance**: Efficient data transfer and caching strategies
+
+<Callout type="info">
+Well-designed APIs reduce integration time by 60%, decrease support tickets by 40%, and improve developer satisfaction by 75%.
+</Callout>
+
+## REST API Design Patterns
+
+### Resource-Oriented Design
+
+```typescript
+// RESTful Resource Design
+interface ApiResource {
+  id: string;
+  type: string;
+  attributes: Record<string, any>;
+  relationships?: Record<string, ResourceRelationship>;
+  links?: Record<string, string>;
+  meta?: Record<string, any>;
+}
+
+interface ResourceRelationship {
+  data: ResourceIdentifier | ResourceIdentifier[];
+  links?: Record<string, string>;
+}
+
+interface ResourceIdentifier {
+  id: string;
+  type: string;
+}
+
+// Orders API Resource Design
+class OrdersController {
+  // GET /api/v1/orders
+  async listOrders(req: Request, res: Response): Promise<void> {
+    const { page = 1, limit = 20, status, customerId } = req.query;
+    
+    const filters: OrderFilters = {
+      status: status as string,
+      customerId: customerId as string
+    };
+
+    const result = await this.orderService.getOrders(filters, {
+      page: Number(page),
+      limit: Number(limit)
+    });
+
+    const response: ApiResponse<ApiResource[]> = {
+      data: result.orders.map(order => this.mapToResource(order)),
+      meta: {
+        pagination: {
+          page: result.pagination.page,
+          limit: result.pagination.limit,
+          total: result.pagination.total,
+          totalPages: result.pagination.totalPages
+        }
+      },
+      links: {
+        self: `/api/v1/orders?page=${page}&limit=${limit}`,
+        first: `/api/v1/orders?page=1&limit=${limit}`,
+        last: `/api/v1/orders?page=${result.pagination.totalPages}&limit=${limit}`,
+        ...(result.pagination.page > 1 && {
+          prev: `/api/v1/orders?page=${result.pagination.page - 1}&limit=${limit}`
+        }),
+        ...(result.pagination.page < result.pagination.totalPages && {
+          next: `/api/v1/orders?page=${result.pagination.page + 1}&limit=${limit}`
+        })
+      }
+    };
+
+    res.status(200).json(response);
+  }
+
+  // GET /api/v1/orders/:id
+  async getOrder(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { include } = req.query;
+
+    const order = await this.orderService.getOrderById(id);
+    if (!order) {
+      return this.notFound(res, 'Order not found');
+    }
+
+    const resource = this.mapToResource(order, include as string);
+    
+    const response: ApiResponse<ApiResource> = {
+      data: resource,
+      included: await this.getIncludedResources(order, include as string)
+    };
+
+    res.status(200).json(response);
+  }
+
+  // POST /api/v1/orders
+  async createOrder(req: Request, res: Response): Promise<void> {
+    const createRequest = this.validateCreateRequest(req.body);
+    
+    try {
+      const order = await this.orderService.createOrder(createRequest);
+      const resource = this.mapToResource(order);
+      
+      const response: ApiResponse<ApiResource> = {
+        data: resource,
+        meta: {
+          message: 'Order created successfully'
+        }
+      };
+
+      res.status(201).json(response);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return this.badRequest(res, error.message, error.details);
+      }
+      throw error;
+    }
+  }
+
+  // PATCH /api/v1/orders/:id
+  async updateOrder(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const updateRequest = this.validateUpdateRequest(req.body);
+
+    const existingOrder = await this.orderService.getOrderById(id);
+    if (!existingOrder) {
+      return this.notFound(res, 'Order not found');
+    }
+
+    try {
+      const updatedOrder = await this.orderService.updateOrder(id, updateRequest);
+      const resource = this.mapToResource(updatedOrder);
+      
+      const response: ApiResponse<ApiResource> = {
+        data: resource,
+        meta: {
+          message: 'Order updated successfully'
+        }
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      if (error instanceof ConflictError) {
+        return this.conflict(res, error.message);
+      }
+      throw error;
+    }
+  }
+
+  // DELETE /api/v1/orders/:id
+  async deleteOrder(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+
+    const existingOrder = await this.orderService.getOrderById(id);
+    if (!existingOrder) {
+      return this.notFound(res, 'Order not found');
+    }
+
+    await this.orderService.deleteOrder(id);
+    res.status(204).send();
+  }
+
+  private mapToResource(order: Order, include?: string): ApiResource {
+    const resource: ApiResource = {
+      id: order.id,
+      type: 'orders',
+      attributes: {
+        customerId: order.customerId,
+        status: order.status,
+        totalAmount: order.totalAmount,
+        currency: order.currency,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt
+      },
+      relationships: {
+        customer: {
+          data: { id: order.customerId, type: 'customers' },
+          links: {
+            related: `/api/v1/orders/${order.id}/customer`
+          }
+        },
+        items: {
+          data: order.items.map(item => ({ id: item.id, type: 'order-items' })),
+          links: {
+            related: `/api/v1/orders/${order.id}/items`
+          }
+        }
+      },
+      links: {
+        self: `/api/v1/orders/${order.id}`
+      }
+    };
+
+    return resource;
+  }
+}
+
+// HTTP Status Code Helpers
+class BaseController {
+  protected success<T>(res: Response, data: T, message?: string): void {
+    res.status(200).json({
+      data,
+      meta: message ? { message } : undefined
+    });
+  }
+
+  protected created<T>(res: Response, data: T, message?: string): void {
+    res.status(201).json({
+      data,
+      meta: message ? { message } : undefined
+    });
+  }
+
+  protected noContent(res: Response): void {
+    res.status(204).send();
+  }
+
+  protected badRequest(res: Response, message: string, errors?: any[]): void {
+    res.status(400).json({
+      error: {
+        code: 'BAD_REQUEST',
+        message,
+        details: errors
+      }
+    });
+  }
+
+  protected unauthorized(res: Response, message: string = 'Unauthorized'): void {
+    res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message
+      }
+    });
+  }
+
+  protected forbidden(res: Response, message: string = 'Forbidden'): void {
+    res.status(403).json({
+      error: {
+        code: 'FORBIDDEN',
+        message
+      }
+    });
+  }
+
+  protected notFound(res: Response, message: string = 'Resource not found'): void {
+    res.status(404).json({
+      error: {
+        code: 'NOT_FOUND',
+        message
+      }
+    });
+  }
+
+  protected conflict(res: Response, message: string): void {
+    res.status(409).json({
+      error: {
+        code: 'CONFLICT',
+        message
+      }
+    });
+  }
+
+  protected unprocessableEntity(res: Response, message: string, errors?: any[]): void {
+    res.status(422).json({
+      error: {
+        code: 'UNPROCESSABLE_ENTITY',
+        message,
+        details: errors
+      }
+    });
+  }
+
+  protected internalServerError(res: Response, message: string = 'Internal server error'): void {
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message
+      }
+    });
+  }
+}
+```
+
+### API Versioning Strategies
+
+```typescript
+// Version-aware API Design
+interface ApiVersion {
+  major: number;
+  minor: number;
+  patch: number;
+}
+
+class VersionManager {
+  private static readonly SUPPORTED_VERSIONS: ApiVersion[] = [
+    { major: 1, minor: 0, patch: 0 },
+    { major: 1, minor: 1, patch: 0 },
+    { major: 2, minor: 0, patch: 0 }
+  ];
+
+  static parseVersion(versionString: string): ApiVersion {
+    const [major, minor, patch] = versionString.split('.').map(Number);
+    return { major: major || 1, minor: minor || 0, patch: patch || 0 };
+  }
+
+  static isSupported(version: ApiVersion): boolean {
+    return this.SUPPORTED_VERSIONS.some(v => 
+      v.major === version.major && 
+      v.minor === version.minor
+    );
+  }
+
+  static getLatestVersion(): ApiVersion {
+    return this.SUPPORTED_VERSIONS[this.SUPPORTED_VERSIONS.length - 1];
+  }
+}
+
+// Header-based Versioning
+class VersionMiddleware {
+  static extract(req: Request, res: Response, next: NextFunction): void {
+    const acceptHeader = req.headers.accept as string;
+    const versionHeader = req.headers['api-version'] as string;
+    
+    let version: ApiVersion;
+
+    if (versionHeader) {
+      // Explicit version in header
+      version = VersionManager.parseVersion(versionHeader);
+    } else if (acceptHeader?.includes('application/vnd.myapi.v')) {
+      // Media type versioning
+      const match = acceptHeader.match(/application\/vnd\.myapi\.v(\d+)/);
+      const majorVersion = match ? parseInt(match[1]) : 1;
+      version = { major: majorVersion, minor: 0, patch: 0 };
+    } else {
+      // Default to latest version
+      version = VersionManager.getLatestVersion();
+    }
+
+    if (!VersionManager.isSupported(version)) {
+      return res.status(400).json({
+        error: {
+          code: 'UNSUPPORTED_VERSION',
+          message: `API version ${version.major}.${version.minor} is not supported`,
+          supportedVersions: VersionManager.SUPPORTED_VERSIONS
+        }
+      });
+    }
+
+    req.apiVersion = version;
+    next();
+  }
+}
+
+// Version-specific Response Formatting
+class OrderResponseFormatter {
+  static format(order: Order, version: ApiVersion): any {
+    switch (version.major) {
+      case 1:
+        return this.formatV1(order, version.minor);
+      case 2:
+        return this.formatV2(order);
+      default:
+        throw new Error(`Unsupported version: ${version.major}`);
+    }
+  }
+
+  private static formatV1(order: Order, minor: number): any {
+    const baseFormat = {
+      id: order.id,
+      customer_id: order.customerId, // snake_case in v1
+      status: order.status,
+      total: order.totalAmount,
+      created_at: order.createdAt,
+      updated_at: order.updatedAt
+    };
+
+    if (minor >= 1) {
+      // Added in v1.1
+      return {
+        ...baseFormat,
+        currency: order.currency,
+        payment_status: order.paymentStatus
+      };
+    }
+
+    return baseFormat;
+  }
+
+  private static formatV2(order: Order): any {
+    // v2 uses camelCase and includes additional fields
+    return {
+      id: order.id,
+      customerId: order.customerId,
+      status: order.status,
+      totalAmount: {
+        value: order.totalAmount,
+        currency: order.currency
+      },
+      paymentStatus: order.paymentStatus,
+      shippingAddress: order.shippingAddress,
+      items: order.items,
+      timestamps: {
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt
+      },
+      links: {
+        self: `/api/v2/orders/${order.id}`,
+        customer: `/api/v2/customers/${order.customerId}`,
+        items: `/api/v2/orders/${order.id}/items`
+      }
+    };
+  }
+}
+```
+
+## GraphQL API Patterns
+
+### Schema Design and Resolvers
+
+```typescript
+// GraphQL Schema Definition
+const typeDefs = `
+  type Query {
+    orders(
+      filters: OrderFilters
+      pagination: PaginationInput
+      sorting: SortingInput
+    ): OrderConnection!
+    
+    order(id: ID!): Order
+    
+    customers(
+      filters: CustomerFilters
+      pagination: PaginationInput
+    ): CustomerConnection!
+    
+    customer(id: ID!): Customer
+  }
+
+  type Mutation {
+    createOrder(input: CreateOrderInput!): CreateOrderPayload!
+    updateOrder(id: ID!, input: UpdateOrderInput!): UpdateOrderPayload!
+    cancelOrder(id: ID!, reason: String): CancelOrderPayload!
+  }
+
+  type Subscription {
+    orderStatusUpdated(orderId: ID): OrderStatusUpdate!
+    orderCreated(customerId: ID): Order!
+  }
+
+  type Order {
+    id: ID!
+    customerId: ID!
+    customer: Customer!
+    status: OrderStatus!
+    items: [OrderItem!]!
+    totalAmount: Money!
+    shippingAddress: Address!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+  }
+
+  type OrderItem {
+    id: ID!
+    productId: ID!
+    product: Product!
+    quantity: Int!
+    unitPrice: Money!
+    subtotal: Money!
+  }
+
+  type Money {
+    amount: Float!
+    currency: Currency!
+  }
+
+  enum OrderStatus {
+    PENDING
+    CONFIRMED
+    SHIPPED
+    DELIVERED
+    CANCELLED
+  }
+
+  enum Currency {
+    USD
+    EUR
+    GBP
+  }
+
+  input OrderFilters {
+    status: OrderStatus
+    customerId: ID
+    dateRange: DateRangeInput
+    minAmount: Float
+    maxAmount: Float
+  }
+
+  input CreateOrderInput {
+    customerId: ID!
+    items: [OrderItemInput!]!
+    shippingAddress: AddressInput!
+  }
+
+  input OrderItemInput {
+    productId: ID!
+    quantity: Int!
+  }
+
+  type CreateOrderPayload {
+    order: Order
+    errors: [Error!]!
+  }
+
+  type Error {
+    field: String
+    message: String!
+    code: ErrorCode!
+  }
+
+  enum ErrorCode {
+    VALIDATION_ERROR
+    BUSINESS_RULE_VIOLATION
+    RESOURCE_NOT_FOUND
+    INSUFFICIENT_STOCK
+  }
+`;
+
+// GraphQL Resolvers with DataLoader
+class OrderResolvers {
+  constructor(
+    private orderService: OrderService,
+    private customerLoader: DataLoader<string, Customer>,
+    private productLoader: DataLoader<string, Product>
+  ) {}
+
+  Query = {
+    orders: async (
+      parent: any,
+      args: { filters?: OrderFilters; pagination?: PaginationInput; sorting?: SortingInput },
+      context: GraphQLContext
+    ) => {
+      const result = await this.orderService.getOrders(
+        args.filters || {},
+        args.pagination || { first: 20 },
+        args.sorting
+      );
+
+      return {
+        edges: result.orders.map(order => ({
+          node: order,
+          cursor: Buffer.from(order.id).toString('base64')
+        })),
+        pageInfo: {
+          hasNextPage: result.hasNextPage,
+          hasPreviousPage: result.hasPreviousPage,
+          startCursor: result.startCursor,
+          endCursor: result.endCursor
+        },
+        totalCount: result.totalCount
+      };
+    },
+
+    order: async (parent: any, args: { id: string }, context: GraphQLContext) => {
+      return await this.orderService.getOrderById(args.id);
+    }
+  };
+
+  Mutation = {
+    createOrder: async (
+      parent: any,
+      args: { input: CreateOrderInput },
+      context: GraphQLContext
+    ) => {
+      try {
+        const order = await this.orderService.createOrder(args.input);
+        return {
+          order,
+          errors: []
+        };
+      } catch (error) {
+        return {
+          order: null,
+          errors: this.mapErrorsToGraphQL(error)
+        };
+      }
+    },
+
+    updateOrder: async (
+      parent: any,
+      args: { id: string; input: UpdateOrderInput },
+      context: GraphQLContext
+    ) => {
+      try {
+        const order = await this.orderService.updateOrder(args.id, args.input);
+        return {
+          order,
+          errors: []
+        };
+      } catch (error) {
+        return {
+          order: null,
+          errors: this.mapErrorsToGraphQL(error)
+        };
+      }
+    }
+  };
+
+  Order = {
+    customer: async (order: Order) => {
+      return await this.customerLoader.load(order.customerId);
+    },
+
+    items: async (order: Order) => {
+      return await this.orderService.getOrderItems(order.id);
+    },
+
+    totalAmount: (order: Order) => ({
+      amount: order.totalAmount,
+      currency: order.currency
+    })
+  };
+
+  OrderItem = {
+    product: async (orderItem: OrderItem) => {
+      return await this.productLoader.load(orderItem.productId);
+    },
+
+    subtotal: (orderItem: OrderItem) => ({
+      amount: orderItem.quantity * orderItem.unitPrice,
+      currency: orderItem.currency
+    })
+  };
+
+  Subscription = {
+    orderStatusUpdated: {
+      subscribe: withFilter(
+        () => pubsub.asyncIterator(['ORDER_STATUS_UPDATED']),
+        (payload, variables) => {
+          return !variables.orderId || payload.orderId === variables.orderId;
+        }
+      )
+    },
+
+    orderCreated: {
+      subscribe: withFilter(
+        () => pubsub.asyncIterator(['ORDER_CREATED']),
+        (payload, variables) => {
+          return !variables.customerId || payload.order.customerId === variables.customerId;
+        }
+      )
+    }
+  };
+
+  private mapErrorsToGraphQL(error: any): GraphQLError[] {
+    if (error instanceof ValidationError) {
+      return error.details.map(detail => ({
+        field: detail.field,
+        message: detail.message,
+        code: 'VALIDATION_ERROR'
+      }));
+    }
+
+    if (error instanceof BusinessRuleViolationError) {
+      return [{
+        field: null,
+        message: error.message,
+        code: 'BUSINESS_RULE_VIOLATION'
+      }];
+    }
+
+    return [{
+      field: null,
+      message: 'An unexpected error occurred',
+      code: 'INTERNAL_ERROR'
+    }];
+  }
+}
+
+// DataLoader for N+1 Query Problem
+function createDataLoaders(): {
+  customerLoader: DataLoader<string, Customer>;
+  productLoader: DataLoader<string, Product>;
+} {
+  return {
+    customerLoader: new DataLoader<string, Customer>(
+      async (customerIds: readonly string[]) => {
+        const customers = await customerService.getCustomersByIds([...customerIds]);
+        const customerMap = new Map(customers.map(c => [c.id, c]));
+        return customerIds.map(id => customerMap.get(id) || null);
+      },
+      {
+        maxBatchSize: 100,
+        cacheKeyFn: (key: string) => key
+      }
+    ),
+
+    productLoader: new DataLoader<string, Product>(
+      async (productIds: readonly string[]) => {
+        const products = await productService.getProductsByIds([...productIds]);
+        const productMap = new Map(products.map(p => [p.id, p]));
+        return productIds.map(id => productMap.get(id) || null);
+      },
+      {
+        maxBatchSize: 100,
+        cacheKeyFn: (key: string) => key
+      }
+    )
+  };
+}
+```
+
+## gRPC API Patterns
+
+### Protocol Buffer Definitions
+
+```protobuf
+// order_service.proto
+syntax = "proto3";
+
+package order.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+service OrderService {
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
+  rpc UpdateOrder(UpdateOrderRequest) returns (UpdateOrderResponse);
+  rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+  
+  // Streaming RPCs
+  rpc StreamOrderUpdates(StreamOrderUpdatesRequest) returns (stream OrderUpdate);
+  rpc BulkCreateOrders(stream CreateOrderRequest) returns (BulkCreateOrdersResponse);
+}
+
+message Order {
+  string id = 1;
+  string customer_id = 2;
+  OrderStatus status = 3;
+  repeated OrderItem items = 4;
+  Money total_amount = 5;
+  Address shipping_address = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message OrderItem {
+  string id = 1;
+  string product_id = 2;
+  int32 quantity = 3;
+  Money unit_price = 4;
+  Money subtotal = 5;
+}
+
+message Money {
+  double amount = 1;
+  string currency = 2;
+}
+
+message Address {
+  string street = 1;
+  string city = 2;
+  string state = 3;
+  string postal_code = 4;
+  string country = 5;
+}
+
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PENDING = 1;
+  ORDER_STATUS_CONFIRMED = 2;
+  ORDER_STATUS_SHIPPED = 3;
+  ORDER_STATUS_DELIVERED = 4;
+  ORDER_STATUS_CANCELLED = 5;
+}
+
+message CreateOrderRequest {
+  string customer_id = 1;
+  repeated OrderItemInput items = 2;
+  Address shipping_address = 3;
+}
+
+message OrderItemInput {
+  string product_id = 1;
+  int32 quantity = 2;
+}
+
+message CreateOrderResponse {
+  Order order = 1;
+  repeated Error errors = 2;
+}
+
+message GetOrderRequest {
+  string id = 1;
+}
+
+message GetOrderResponse {
+  Order order = 1;
+}
+
+message ListOrdersRequest {
+  OrderFilters filters = 1;
+  Pagination pagination = 2;
+  Sorting sorting = 3;
+}
+
+message OrderFilters {
+  OrderStatus status = 1;
+  string customer_id = 2;
+  DateRange date_range = 3;
+  double min_amount = 4;
+  double max_amount = 5;
+}
+
+message Pagination {
+  int32 page = 1;
+  int32 limit = 2;
+}
+
+message Sorting {
+  string field = 1;
+  SortDirection direction = 2;
+}
+
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0;
+  SORT_DIRECTION_ASC = 1;
+  SORT_DIRECTION_DESC = 2;
+}
+
+message ListOrdersResponse {
+  repeated Order orders = 1;
+  PaginationInfo pagination = 2;
+}
+
+message PaginationInfo {
+  int32 page = 1;
+  int32 limit = 2;
+  int32 total = 3;
+  int32 total_pages = 4;
+}
+
+message Error {
+  string field = 1;
+  string message = 2;
+  ErrorCode code = 3;
+}
+
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_VALIDATION = 1;
+  ERROR_CODE_BUSINESS_RULE = 2;
+  ERROR_CODE_NOT_FOUND = 3;
+  ERROR_CODE_CONFLICT = 4;
+}
+```
+
+### gRPC Service Implementation
+
+```typescript
+// gRPC Service Implementation
+import * as grpc from '@grpc/grpc-js';
+import { OrderServiceService } from './generated/order_service_grpc_pb';
+import {
+  CreateOrderRequest,
+  CreateOrderResponse,
+  GetOrderRequest,
+  GetOrderResponse,
+  ListOrdersRequest,
+  ListOrdersResponse,
+  Order as OrderProto,
+  OrderStatus,
+  Error as ErrorProto,
+  ErrorCode
+} from './generated/order_service_pb';
+
+class OrderGrpcService implements OrderServiceService {
+  constructor(private readonly orderService: OrderService) {}
+
+  async createOrder(
+    call: grpc.ServerUnaryCall<CreateOrderRequest, CreateOrderResponse>,
+    callback: grpc.sendUnaryData<CreateOrderResponse>
+  ): Promise<void> {
+    try {
+      const request = call.request;
+      
+      // Validate request
+      const validationErrors = this.validateCreateOrderRequest(request);
+      if (validationErrors.length > 0) {
+        const response = new CreateOrderResponse();
+        response.setErrorsList(validationErrors);
+        return callback(null, response);
+      }
+
+      // Convert from protobuf to domain model
+      const createOrderDto: CreateOrderDto = {
+        customerId: request.getCustomerId(),
+        items: request.getItemsList().map(item => ({
+          productId: item.getProductId(),
+          quantity: item.getQuantity()
+        })),
+        shippingAddress: this.convertAddressFromProto(request.getShippingAddress()!)
+      };
+
+      // Execute business logic
+      const order = await this.orderService.createOrder(createOrderDto);
+
+      // Convert to protobuf response
+      const response = new CreateOrderResponse();
+      response.setOrder(this.convertOrderToProto(order));
+      
+      callback(null, response);
+    } catch (error) {
+      this.handleGrpcError(error, callback);
+    }
+  }
+
+  async getOrder(
+    call: grpc.ServerUnaryCall<GetOrderRequest, GetOrderResponse>,
+    callback: grpc.sendUnaryData<GetOrderResponse>
+  ): Promise<void> {
+    try {
+      const orderId = call.request.getId();
+      
+      if (!orderId) {
+        return callback({
+          code: grpc.status.INVALID_ARGUMENT,
+          message: 'Order ID is required'
+        });
+      }
+
+      const order = await this.orderService.getOrderById(orderId);
+      
+      if (!order) {
+        return callback({
+          code: grpc.status.NOT_FOUND,
+          message: `Order with ID ${orderId} not found`
+        });
+      }
+
+      const response = new GetOrderResponse();
+      response.setOrder(this.convertOrderToProto(order));
+      
+      callback(null, response);
+    } catch (error) {
+      this.handleGrpcError(error, callback);
+    }
+  }
+
+  async listOrders(
+    call: grpc.ServerUnaryCall<ListOrdersRequest, ListOrdersResponse>,
+    callback: grpc.sendUnaryData<ListOrdersResponse>
+  ): Promise<void> {
+    try {
+      const request = call.request;
+      
+      // Convert filters from protobuf
+      const filters: OrderFilters = {
+        status: this.convertOrderStatusFromProto(request.getFilters()?.getStatus()),
+        customerId: request.getFilters()?.getCustomerId(),
+        dateRange: request.getFilters()?.getDateRange() ? {
+          start: request.getFilters()!.getDateRange()!.getStart()!.toDate(),
+          end: request.getFilters()!.getDateRange()!.getEnd()!.toDate()
+        } : undefined,
+        minAmount: request.getFilters()?.getMinAmount(),
+        maxAmount: request.getFilters()?.getMaxAmount()
+      };
+
+      const pagination = {
+        page: request.getPagination()?.getPage() || 1,
+        limit: request.getPagination()?.getLimit() || 20
+      };
+
+      // Execute query
+      const result = await this.orderService.getOrders(filters, pagination);
+
+      // Convert to protobuf response
+      const response = new ListOrdersResponse();
+      response.setOrdersList(result.orders.map(order => this.convertOrderToProto(order)));
+      
+      const paginationInfo = new PaginationInfo();
+      paginationInfo.setPage(result.pagination.page);
+      paginationInfo.setLimit(result.pagination.limit);
+      paginationInfo.setTotal(result.pagination.total);
+      paginationInfo.setTotalPages(result.pagination.totalPages);
+      response.setPagination(paginationInfo);
+
+      callback(null, response);
+    } catch (error) {
+      this.handleGrpcError(error, callback);
+    }
+  }
+
+  // Streaming RPC example
+  streamOrderUpdates(call: grpc.ServerWritableStream<StreamOrderUpdatesRequest, OrderUpdate>): void {
+    const request = call.request;
+    const customerId = request.getCustomerId();
+
+    // Subscribe to order updates
+    const subscription = this.orderService.subscribeToOrderUpdates(customerId);
+
+    subscription.on('orderUpdate', (update: OrderUpdateEvent) => {
+      const orderUpdate = new OrderUpdate();
+      orderUpdate.setOrder(this.convertOrderToProto(update.order));
+      orderUpdate.setEventType(this.convertUpdateEventType(update.eventType));
+      orderUpdate.setTimestamp(Timestamp.fromDate(update.timestamp));
+
+      call.write(orderUpdate);
+    });
+
+    call.on('cancelled', () => {
+      subscription.unsubscribe();
+    });
+
+    call.on('error', (error) => {
+      console.error('Stream error:', error);
+      subscription.unsubscribe();
+    });
+  }
+
+  private convertOrderToProto(order: Order): OrderProto {
+    const orderProto = new OrderProto();
+    orderProto.setId(order.id);
+    orderProto.setCustomerId(order.customerId);
+    orderProto.setStatus(this.convertOrderStatusToProto(order.status));
+    
+    const items = order.items.map(item => {
+      const itemProto = new OrderItemProto();
+      itemProto.setId(item.id);
+      itemProto.setProductId(item.productId);
+      itemProto.setQuantity(item.quantity);
+      
+      const unitPrice = new MoneyProto();
+      unitPrice.setAmount(item.unitPrice);
+      unitPrice.setCurrency(item.currency);
+      itemProto.setUnitPrice(unitPrice);
+      
+      const subtotal = new MoneyProto();
+      subtotal.setAmount(item.subtotal);
+      subtotal.setCurrency(item.currency);
+      itemProto.setSubtotal(subtotal);
+      
+      return itemProto;
+    });
+    
+    orderProto.setItemsList(items);
+
+    const totalAmount = new MoneyProto();
+    totalAmount.setAmount(order.totalAmount);
+    totalAmount.setCurrency(order.currency);
+    orderProto.setTotalAmount(totalAmount);
+
+    orderProto.setCreatedAt(Timestamp.fromDate(order.createdAt));
+    orderProto.setUpdatedAt(Timestamp.fromDate(order.updatedAt));
+
+    return orderProto;
+  }
+
+  private handleGrpcError(error: any, callback: grpc.sendUnaryData<any>): void {
+    if (error instanceof ValidationError) {
+      callback({
+        code: grpc.status.INVALID_ARGUMENT,
+        message: error.message,
+        details: error.details
+      });
+    } else if (error instanceof NotFoundError) {
+      callback({
+        code: grpc.status.NOT_FOUND,
+        message: error.message
+      });
+    } else if (error instanceof ConflictError) {
+      callback({
+        code: grpc.status.ALREADY_EXISTS,
+        message: error.message
+      });
+    } else {
+      callback({
+        code: grpc.status.INTERNAL,
+        message: 'Internal server error'
+      });
+    }
+  }
+}
+```
+
+## API Security Patterns
+
+### Authentication and Authorization
+
+```typescript
+// JWT-based Authentication
+class JwtAuthService {
+  constructor(
+    private readonly jwtSecret: string,
+    private readonly tokenExpiry: string = '1h'
+  ) {}
+
+  generateToken(user: User): string {
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      roles: user.roles,
+      permissions: user.permissions,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + this.parseExpiry(this.tokenExpiry)
+    };
+
+    return jwt.sign(payload, this.jwtSecret, {
+      algorithm: 'HS256'
+    });
+  }
+
+  verifyToken(token: string): TokenPayload {
+    try {
+      return jwt.verify(token, this.jwtSecret) as TokenPayload;
+    } catch (error) {
+      throw new UnauthorizedError('Invalid token');
+    }
+  }
+
+  refreshToken(token: string): string {
+    const payload = this.verifyToken(token);
+    
+    // Create new token with fresh expiry
+    const newPayload = {
+      ...payload,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + this.parseExpiry(this.tokenExpiry)
+    };
+
+    return jwt.sign(newPayload, this.jwtSecret);
+  }
+}
+
+// Role-based Access Control Middleware
+class RbacMiddleware {
+  static requirePermission(permission: string) {
+    return (req: Request, res: Response, next: NextFunction) => {
+      const user = req.user;
+      
+      if (!user) {
+        return res.status(401).json({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required'
+          }
+        });
+      }
+
+      if (!this.hasPermission(user, permission)) {
+        return res.status(403).json({
+          error: {
+            code: 'FORBIDDEN',
+            message: `Permission '${permission}' required`
+          }
+        });
+      }
+
+      next();
+    };
+  }
+
+  static requireRole(role: string) {
+    return (req: Request, res: Response, next: NextFunction) => {
+      const user = req.user;
+      
+      if (!user) {
+        return res.status(401).json({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required'
+          }
+        });
+      }
+
+      if (!user.roles.includes(role)) {
+        return res.status(403).json({
+          error: {
+            code: 'FORBIDDEN',
+            message: `Role '${role}' required`
+          }
+        });
+      }
+
+      next();
+    };
+  }
+
+  private static hasPermission(user: User, permission: string): boolean {
+    // Direct permission check
+    if (user.permissions.includes(permission)) {
+      return true;
+    }
+
+    // Role-based permission check
+    return user.roles.some(role => {
+      const rolePermissions = this.getRolePermissions(role);
+      return rolePermissions.includes(permission);
+    });
+  }
+
+  private static getRolePermissions(role: string): string[] {
+    const rolePermissions: Record<string, string[]> = {
+      'admin': ['*'], // Admin has all permissions
+      'order-manager': ['orders:read', 'orders:write', 'orders:delete'],
+      'customer-service': ['orders:read', 'customers:read', 'customers:write'],
+      'customer': ['orders:read:own', 'profile:read:own', 'profile:write:own']
+    };
+
+    return rolePermissions[role] || [];
+  }
+}
+
+// API Key Authentication
+class ApiKeyAuthService {
+  constructor(private readonly apiKeyRepository: ApiKeyRepository) {}
+
+  async validateApiKey(apiKey: string): Promise<ApiKeyInfo> {
+    const keyInfo = await this.apiKeyRepository.findByKey(apiKey);
+    
+    if (!keyInfo) {
+      throw new UnauthorizedError('Invalid API key');
+    }
+
+    if (keyInfo.isExpired()) {
+      throw new UnauthorizedError('API key expired');
+    }
+
+    if (keyInfo.isRevoked()) {
+      throw new UnauthorizedError('API key revoked');
+    }
+
+    // Update last used timestamp
+    await this.apiKeyRepository.updateLastUsed(keyInfo.id);
+
+    return keyInfo;
+  }
+
+  async createApiKey(
+    userId: string,
+    name: string,
+    permissions: string[],
+    expiresAt?: Date
+  ): Promise<ApiKey> {
+    const apiKey = {
+      id: crypto.randomUUID(),
+      key: this.generateSecureKey(),
+      userId,
+      name,
+      permissions,
+      expiresAt,
+      createdAt: new Date(),
+      lastUsedAt: null,
+      isRevoked: false
+    };
+
+    await this.apiKeyRepository.save(apiKey);
+    return apiKey;
+  }
+
+  private generateSecureKey(): string {
+    return `ak_${crypto.randomBytes(32).toString('hex')}`;
+  }
+}
+```
+
+## Rate Limiting and Throttling
+
+```typescript
+// Rate Limiting Implementation
+interface RateLimitConfig {
+  windowMs: number;
+  maxRequests: number;
+  keyGenerator?: (req: Request) => string;
+  skipSuccessfulRequests?: boolean;
+  skipFailedRequests?: boolean;
+}
+
+class RateLimiter {
+  private store: Map<string, RateLimitInfo> = new Map();
+  private cleanupInterval: NodeJS.Timer;
+
+  constructor(private config: RateLimitConfig) {
+    // Cleanup expired entries every minute
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup();
+    }, 60000);
+  }
+
+  middleware() {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      const key = this.config.keyGenerator 
+        ? this.config.keyGenerator(req)
+        : this.getDefaultKey(req);
+
+      const limit = await this.checkLimit(key);
+
+      // Set rate limit headers
+      res.set({
+        'X-RateLimit-Limit': this.config.maxRequests.toString(),
+        'X-RateLimit-Remaining': Math.max(0, this.config.maxRequests - limit.count).toString(),
+        'X-RateLimit-Reset': new Date(limit.resetTime).toISOString()
+      });
+
+      if (limit.exceeded) {
+        return res.status(429).json({
+          error: {
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: 'Too many requests',
+            retryAfter: Math.ceil((limit.resetTime - Date.now()) / 1000)
+          }
+        });
+      }
+
+      // Increment counter after successful request
+      res.on('finish', () => {
+        if (this.shouldCount(req, res)) {
+          this.incrementCounter(key);
+        }
+      });
+
+      next();
+    };
+  }
+
+  private async checkLimit(key: string): Promise<RateLimitInfo> {
+    const now = Date.now();
+    const windowStart = now - this.config.windowMs;
+    
+    let info = this.store.get(key);
+    
+    if (!info || info.resetTime <= now) {
+      // Create new window
+      info = {
+        count: 0,
+        resetTime: now + this.config.windowMs,
+        exceeded: false
+      };
+      this.store.set(key, info);
+    }
+
+    info.exceeded = info.count >= this.config.maxRequests;
+    return info;
+  }
+
+  private incrementCounter(key: string): void {
+    const info = this.store.get(key);
+    if (info) {
+      info.count++;
+      info.exceeded = info.count >= this.config.maxRequests;
+    }
+  }
+
+  private getDefaultKey(req: Request): string {
+    // Use IP address as default key
+    return req.ip || req.connection.remoteAddress || 'unknown';
+  }
+
+  private shouldCount(req: Request, res: Response): boolean {
+    if (this.config.skipSuccessfulRequests && res.statusCode < 400) {
+      return false;
+    }
+    
+    if (this.config.skipFailedRequests && res.statusCode >= 400) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  private cleanup(): void {
+    const now = Date.now();
+    for (const [key, info] of this.store.entries()) {
+      if (info.resetTime <= now) {
+        this.store.delete(key);
+      }
+    }
+  }
+
+  dispose(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+  }
+}
+
+// Usage examples for different rate limiting strategies
+const rateLimitConfigs = {
+  // Global rate limit
+  global: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 1000,
+    keyGenerator: () => 'global'
+  },
+
+  // Per-IP rate limit
+  perIp: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 100,
+    keyGenerator: (req: Request) => req.ip
+  },
+
+  // Per-user rate limit
+  perUser: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 1000,
+    keyGenerator: (req: Request) => req.user?.id || req.ip
+  },
+
+  // Per-API key rate limit
+  perApiKey: {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 10000,
+    keyGenerator: (req: Request) => req.headers['x-api-key'] as string || req.ip
+  }
+};
+```
+
+## Production Implementation Checklist
+
+- [ ] **API Documentation**: OpenAPI/Swagger specifications with examples
+- [ ] **Versioning Strategy**: Clear versioning policy and migration guides
+- [ ] **Authentication**: Secure authentication mechanisms (JWT, API keys, OAuth)
+- [ ] **Authorization**: Role-based access control and permission management
+- [ ] **Rate Limiting**: Protect against abuse and ensure fair usage
+- [ ] **Input Validation**: Comprehensive request validation and sanitization
+- [ ] **Error Handling**: Consistent error responses and proper status codes
+- [ ] **Logging**: Request/response logging and audit trails
+- [ ] **Monitoring**: API performance metrics and health checks
+- [ ] **Testing**: Unit tests, integration tests, and contract testing
+
+<Callout type="success">
+Well-designed APIs reduce integration time by 60%, decrease support tickets by 40%, and improve developer satisfaction by 75%.
+</Callout>
+
+---
+
+*Explore our complete [API Design Framework](https://github.com/vimasa-consulting/api-design-framework) for production-ready implementation patterns.* 

@@ -1,0 +1,1181 @@
+---
+title: "Microservices Architecture Guide"
+description: "Master microservices design patterns, service decomposition strategies, and distributed system challenges. Learn communication patterns, data management, and deployment strategies for scalable systems."
+category: "architects"
+tags: ["microservices", "distributed-systems", "service-mesh", "api-gateway", "event-driven", "containerization", "kubernetes"]
+publishedAt: "2024-01-18"
+difficulty: "advanced"
+externalLinks:
+  - title: "Building Microservices by Sam Newman"
+    url: "https://www.amazon.com/Building-Microservices-Designing-Fine-Grained-Systems/dp/1492034029"
+    description: "Comprehensive guide to microservices architecture"
+    category: "books"
+  - title: "Microservices Patterns by Chris Richardson"
+    url: "https://www.amazon.com/Microservices-Patterns-examples-Chris-Richardson/dp/1617294543"
+    description: "Practical patterns for microservices implementation"
+    category: "books"
+  - title: "Kubernetes Documentation"
+    url: "https://kubernetes.io/docs/"
+    description: "Official Kubernetes documentation"
+    category: "documentation"
+  - title: "Istio Service Mesh"
+    url: "https://istio.io/latest/docs/"
+    description: "Service mesh for microservices communication"
+    category: "tools"
+  - title: "Netflix Tech Blog"
+    url: "https://netflixtechblog.com/"
+    description: "Netflix's microservices experiences and patterns"
+    category: "blogs"
+relatedGuides: ["domain-driven-design-guide", "api-design-patterns-guide", "cqrs-event-sourcing-guide"]
+---
+
+# Microservices Architecture Guide
+
+Build scalable, resilient distributed systems using microservices patterns. Master service decomposition, inter-service communication, data management, and deployment strategies for cloud-native applications.
+
+## Introduction
+
+Microservices architecture enables:
+
+- **Independent Deployment**: Services can be deployed and scaled independently
+- **Technology Diversity**: Different services can use different technologies
+- **Team Autonomy**: Small teams can own complete services
+- **Fault Isolation**: Failures in one service don't cascade to others
+- **Scalability**: Fine-grained scaling based on service-specific needs
+
+<Callout type="info">
+Organizations adopting microservices report 50% faster feature delivery, 60% improvement in system reliability, and 40% reduction in deployment time.
+</Callout>
+
+## Service Decomposition Strategies
+
+### Domain-Driven Decomposition
+
+```typescript
+// E-commerce System Decomposition
+interface BoundedContext {
+  name: string;
+  responsibilities: string[];
+  dataOwnership: string[];
+  apis: ServiceAPI[];
+  events: DomainEvent[];
+}
+
+// Order Management Service
+const orderService: BoundedContext = {
+  name: 'OrderService',
+  responsibilities: [
+    'Order lifecycle management',
+    'Order validation',
+    'Order status tracking',
+    'Order cancellation'
+  ],
+  dataOwnership: [
+    'orders',
+    'order_items',
+    'order_status_history'
+  ],
+  apis: [
+    {
+      endpoint: '/api/orders',
+      methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      authentication: 'JWT'
+    },
+    {
+      endpoint: '/api/orders/{id}/status',
+      methods: ['PUT'],
+      authentication: 'JWT'
+    }
+  ],
+  events: [
+    'OrderCreated',
+    'OrderConfirmed',
+    'OrderShipped',
+    'OrderCancelled'
+  ]
+};
+
+// Payment Service
+const paymentService: BoundedContext = {
+  name: 'PaymentService',
+  responsibilities: [
+    'Payment processing',
+    'Payment method management',
+    'Refund processing',
+    'Payment fraud detection'
+  ],
+  dataOwnership: [
+    'payments',
+    'payment_methods',
+    'refunds',
+    'fraud_checks'
+  ],
+  apis: [
+    {
+      endpoint: '/api/payments',
+      methods: ['POST'],
+      authentication: 'JWT'
+    },
+    {
+      endpoint: '/api/payments/{id}/refund',
+      methods: ['POST'],
+      authentication: 'JWT'
+    }
+  ],
+  events: [
+    'PaymentProcessed',
+    'PaymentFailed',
+    'RefundProcessed'
+  ]
+};
+
+// Inventory Service
+const inventoryService: BoundedContext = {
+  name: 'InventoryService',
+  responsibilities: [
+    'Stock level management',
+    'Inventory reservation',
+    'Stock replenishment',
+    'Warehouse management'
+  ],
+  dataOwnership: [
+    'products',
+    'inventory_levels',
+    'reservations',
+    'warehouses'
+  ],
+  apis: [
+    {
+      endpoint: '/api/inventory',
+      methods: ['GET'],
+      authentication: 'API_KEY'
+    },
+    {
+      endpoint: '/api/inventory/reserve',
+      methods: ['POST'],
+      authentication: 'SERVICE_TOKEN'
+    }
+  ],
+  events: [
+    'InventoryReserved',
+    'InventoryReleased',
+    'StockLevelLow'
+  ]
+};
+
+// Service Decomposition Analysis
+class ServiceDecompositionAnalyzer {
+  static analyzeServices(services: BoundedContext[]): DecompositionReport {
+    return {
+      cohesionScore: this.calculateCohesion(services),
+      couplingScore: this.calculateCoupling(services),
+      dataConsistency: this.analyzeDataConsistency(services),
+      communicationComplexity: this.analyzeCommunication(services),
+      recommendations: this.generateRecommendations(services)
+    };
+  }
+
+  private static calculateCohesion(services: BoundedContext[]): number {
+    // Measure how related responsibilities are within each service
+    return services.reduce((score, service) => {
+      const relatedResponsibilities = this.countRelatedResponsibilities(service);
+      return score + (relatedResponsibilities / service.responsibilities.length);
+    }, 0) / services.length;
+  }
+
+  private static calculateCoupling(services: BoundedContext[]): number {
+    // Measure dependencies between services
+    let totalDependencies = 0;
+    let totalPossibleDependencies = services.length * (services.length - 1);
+
+    services.forEach(service => {
+      services.forEach(otherService => {
+        if (service !== otherService) {
+          if (this.hasDependency(service, otherService)) {
+            totalDependencies++;
+          }
+        }
+      });
+    });
+
+    return totalDependencies / totalPossibleDependencies;
+  }
+}
+```
+
+### Service Communication Patterns
+
+```typescript
+// Synchronous Communication - REST/gRPC
+class OrderServiceClient {
+  constructor(
+    private httpClient: HttpClient,
+    private serviceRegistry: ServiceRegistry,
+    private circuitBreaker: CircuitBreaker
+  ) {}
+
+  async getCustomer(customerId: string): Promise<Customer | null> {
+    const endpoint = await this.serviceRegistry.getEndpoint('CustomerService');
+    
+    return await this.circuitBreaker.execute(async () => {
+      const response = await this.httpClient.get(
+        `${endpoint}/api/customers/${customerId}`,
+        {
+          timeout: 5000,
+          headers: {
+            'Authorization': `Bearer ${this.getServiceToken()}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      return response.status === 200 ? response.data : null;
+    });
+  }
+
+  async processPayment(paymentRequest: PaymentRequest): Promise<PaymentResult> {
+    const endpoint = await this.serviceRegistry.getEndpoint('PaymentService');
+    
+    return await this.circuitBreaker.execute(async () => {
+      const response = await this.httpClient.post(
+        `${endpoint}/api/payments`,
+        paymentRequest,
+        {
+          timeout: 30000, // Longer timeout for payment processing
+          headers: {
+            'Authorization': `Bearer ${this.getServiceToken()}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': paymentRequest.idempotencyKey
+          }
+        }
+      );
+
+      if (response.status !== 200) {
+        throw new PaymentProcessingError(response.data.message);
+      }
+
+      return response.data;
+    });
+  }
+}
+
+// Asynchronous Communication - Event-Driven
+interface EventBus {
+  publish(event: DomainEvent): Promise<void>;
+  subscribe<T extends DomainEvent>(
+    eventType: string,
+    handler: EventHandler<T>
+  ): Promise<void>;
+}
+
+class OrderEventHandler {
+  constructor(
+    private orderService: OrderService,
+    private emailService: EmailService,
+    private inventoryService: InventoryService
+  ) {}
+
+  @EventHandler('OrderCreated')
+  async handleOrderCreated(event: OrderCreatedEvent): Promise<void> {
+    // Reserve inventory
+    try {
+      await this.inventoryService.reserveItems(event.orderId, event.items);
+    } catch (error) {
+      // Publish compensation event
+      await this.eventBus.publish(new OrderCreationFailed(
+        event.orderId,
+        'Insufficient inventory'
+      ));
+      return;
+    }
+
+    // Send confirmation email
+    await this.emailService.sendOrderConfirmation(
+      event.customerId,
+      event.orderId
+    );
+  }
+
+  @EventHandler('PaymentProcessed')
+  async handlePaymentProcessed(event: PaymentProcessedEvent): Promise<void> {
+    // Update order status
+    await this.orderService.confirmOrder(event.orderId);
+
+    // Trigger fulfillment
+    await this.eventBus.publish(new OrderReadyForFulfillment(
+      event.orderId,
+      event.items
+    ));
+  }
+
+  @EventHandler('PaymentFailed')
+  async handlePaymentFailed(event: PaymentFailedEvent): Promise<void> {
+    // Cancel order
+    await this.orderService.cancelOrder(event.orderId, 'Payment failed');
+
+    // Release inventory
+    await this.inventoryService.releaseReservation(event.orderId);
+
+    // Notify customer
+    await this.emailService.sendPaymentFailureNotification(
+      event.customerId,
+      event.orderId,
+      event.failureReason
+    );
+  }
+}
+
+// Saga Pattern for Distributed Transactions
+class OrderSaga {
+  constructor(
+    private eventBus: EventBus,
+    private sagaRepository: SagaRepository
+  ) {}
+
+  async startOrderProcessing(command: CreateOrderCommand): Promise<void> {
+    const sagaId = crypto.randomUUID();
+    
+    const saga = new OrderProcessingSaga(sagaId, {
+      orderId: command.orderId,
+      customerId: command.customerId,
+      items: command.items,
+      totalAmount: command.totalAmount,
+      status: 'STARTED',
+      steps: []
+    });
+
+    await this.sagaRepository.save(saga);
+
+    // Step 1: Create order
+    await this.eventBus.publish(new CreateOrderSagaStep(
+      sagaId,
+      command.orderId,
+      command
+    ));
+  }
+
+  @EventHandler('OrderCreated')
+  async handleOrderCreated(event: OrderCreatedEvent): Promise<void> {
+    const saga = await this.sagaRepository.findByOrderId(event.orderId);
+    if (!saga) return;
+
+    saga.completeStep('CREATE_ORDER');
+
+    // Step 2: Reserve inventory
+    await this.eventBus.publish(new ReserveInventorySagaStep(
+      saga.id,
+      event.orderId,
+      event.items
+    ));
+
+    await this.sagaRepository.save(saga);
+  }
+
+  @EventHandler('InventoryReserved')
+  async handleInventoryReserved(event: InventoryReservedEvent): Promise<void> {
+    const saga = await this.sagaRepository.findByOrderId(event.orderId);
+    if (!saga) return;
+
+    saga.completeStep('RESERVE_INVENTORY');
+
+    // Step 3: Process payment
+    await this.eventBus.publish(new ProcessPaymentSagaStep(
+      saga.id,
+      event.orderId,
+      saga.data.totalAmount
+    ));
+
+    await this.sagaRepository.save(saga);
+  }
+
+  @EventHandler('PaymentProcessed')
+  async handlePaymentProcessed(event: PaymentProcessedEvent): Promise<void> {
+    const saga = await this.sagaRepository.findByOrderId(event.orderId);
+    if (!saga) return;
+
+    saga.completeStep('PROCESS_PAYMENT');
+    saga.complete();
+
+    await this.sagaRepository.save(saga);
+  }
+
+  // Compensation handlers
+  @EventHandler('PaymentFailed')
+  async handlePaymentFailed(event: PaymentFailedEvent): Promise<void> {
+    const saga = await this.sagaRepository.findByOrderId(event.orderId);
+    if (!saga) return;
+
+    // Start compensation
+    saga.startCompensation();
+
+    // Compensate inventory reservation
+    await this.eventBus.publish(new ReleaseInventoryCompensation(
+      saga.id,
+      event.orderId
+    ));
+
+    await this.sagaRepository.save(saga);
+  }
+
+  @EventHandler('InventoryReleased')
+  async handleInventoryReleased(event: InventoryReleasedEvent): Promise<void> {
+    const saga = await this.sagaRepository.findByOrderId(event.orderId);
+    if (!saga) return;
+
+    // Compensate order creation
+    await this.eventBus.publish(new CancelOrderCompensation(
+      saga.id,
+      event.orderId
+    ));
+
+    saga.completeCompensation();
+    await this.sagaRepository.save(saga);
+  }
+}
+```
+
+## Data Management Patterns
+
+### Database per Service
+
+```typescript
+// Service-specific data stores
+interface ServiceDataStore {
+  serviceName: string;
+  datastore: DatastoreConfig;
+  schemas: string[];
+  migrations: Migration[];
+}
+
+// Order Service - Relational Database
+const orderServiceDataStore: ServiceDataStore = {
+  serviceName: 'OrderService',
+  datastore: {
+    type: 'PostgreSQL',
+    connectionString: process.env.ORDER_DB_CONNECTION,
+    poolSize: 20,
+    ssl: true
+  },
+  schemas: ['orders', 'order_items', 'order_status_history'],
+  migrations: [
+    {
+      version: '001',
+      description: 'Create orders table',
+      up: `
+        CREATE TABLE orders (
+          id UUID PRIMARY KEY,
+          customer_id UUID NOT NULL,
+          status VARCHAR(20) NOT NULL,
+          total_amount DECIMAL(10,2) NOT NULL,
+          currency CHAR(3) NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        );
+      `,
+      down: 'DROP TABLE orders;'
+    }
+  ]
+};
+
+// Inventory Service - Document Database
+const inventoryServiceDataStore: ServiceDataStore = {
+  serviceName: 'InventoryService',
+  datastore: {
+    type: 'MongoDB',
+    connectionString: process.env.INVENTORY_DB_CONNECTION,
+    options: {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    }
+  },
+  schemas: ['products', 'inventory_levels', 'reservations'],
+  migrations: []
+};
+
+// Analytics Service - Time Series Database
+const analyticsServiceDataStore: ServiceDataStore = {
+  serviceName: 'AnalyticsService',
+  datastore: {
+    type: 'InfluxDB',
+    connectionString: process.env.ANALYTICS_DB_CONNECTION,
+    database: 'metrics'
+  },
+  schemas: ['order_metrics', 'user_activity', 'system_performance'],
+  migrations: []
+};
+
+// Event Store - Event-specific Database
+const eventStoreDataStore: ServiceDataStore = {
+  serviceName: 'EventStore',
+  datastore: {
+    type: 'EventStoreDB',
+    connectionString: process.env.EVENTSTORE_CONNECTION,
+    settings: {
+      defaultUserCredentials: {
+        username: process.env.EVENTSTORE_USER,
+        password: process.env.EVENTSTORE_PASSWORD
+      }
+    }
+  },
+  schemas: ['events', 'snapshots', 'projections'],
+  migrations: []
+};
+```
+
+### CQRS with Read Models
+
+```typescript
+// Command and Query Separation
+class OrderCommandService {
+  constructor(
+    private eventStore: EventStore,
+    private eventBus: EventBus
+  ) {}
+
+  async createOrder(command: CreateOrderCommand): Promise<void> {
+    const aggregate = OrderAggregate.create(
+      command.orderId,
+      command.customerId,
+      command.items
+    );
+
+    await this.eventStore.save(aggregate);
+    
+    const events = aggregate.getUncommittedEvents();
+    await this.eventBus.publishAll(events);
+  }
+
+  async updateOrder(command: UpdateOrderCommand): Promise<void> {
+    const aggregate = await this.eventStore.load(command.orderId);
+    aggregate.update(command.updates);
+
+    await this.eventStore.save(aggregate);
+    
+    const events = aggregate.getUncommittedEvents();
+    await this.eventBus.publishAll(events);
+  }
+}
+
+class OrderQueryService {
+  constructor(
+    private readModelRepository: OrderReadModelRepository,
+    private cacheService: CacheService
+  ) {}
+
+  async getOrder(orderId: string): Promise<OrderReadModel | null> {
+    const cacheKey = `order:${orderId}`;
+    
+    // Try cache first
+    const cached = await this.cacheService.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    // Query read model
+    const order = await this.readModelRepository.findById(orderId);
+    if (order) {
+      await this.cacheService.set(cacheKey, JSON.stringify(order), 300); // 5 min TTL
+    }
+
+    return order;
+  }
+
+  async searchOrders(query: OrderSearchQuery): Promise<OrderSearchResult> {
+    return await this.readModelRepository.search(query);
+  }
+
+  async getOrderStatistics(filters: StatisticsFilters): Promise<OrderStatistics> {
+    const cacheKey = `order-stats:${JSON.stringify(filters)}`;
+    
+    const cached = await this.cacheService.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    const stats = await this.readModelRepository.getStatistics(filters);
+    await this.cacheService.set(cacheKey, JSON.stringify(stats), 600); // 10 min TTL
+
+    return stats;
+  }
+}
+
+// Read Model Projections
+class OrderReadModelProjection {
+  constructor(
+    private repository: OrderReadModelRepository,
+    private customerService: CustomerService
+  ) {}
+
+  @EventHandler('OrderCreated')
+  async handleOrderCreated(event: OrderCreatedEvent): Promise<void> {
+    const customer = await this.customerService.getCustomer(event.customerId);
+    
+    const readModel: OrderReadModel = {
+      id: event.orderId,
+      customerId: event.customerId,
+      customerName: customer?.name || 'Unknown',
+      customerEmail: customer?.email || '',
+      status: 'pending',
+      items: event.items.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        subtotal: item.quantity * item.unitPrice
+      })),
+      totalAmount: event.totalAmount,
+      currency: event.currency,
+      createdAt: event.timestamp,
+      updatedAt: event.timestamp
+    };
+
+    await this.repository.insert(readModel);
+  }
+
+  @EventHandler('OrderStatusChanged')
+  async handleOrderStatusChanged(event: OrderStatusChangedEvent): Promise<void> {
+    await this.repository.updateStatus(
+      event.orderId,
+      event.newStatus,
+      event.timestamp
+    );
+  }
+}
+```
+
+## Service Mesh and Infrastructure
+
+### Service Discovery and Load Balancing
+
+```typescript
+// Service Registry
+interface ServiceInstance {
+  id: string;
+  serviceName: string;
+  host: string;
+  port: number;
+  tags: string[];
+  health: HealthStatus;
+  metadata: Record<string, string>;
+}
+
+class ConsulServiceRegistry implements ServiceRegistry {
+  constructor(private consulClient: ConsulClient) {}
+
+  async register(instance: ServiceInstance): Promise<void> {
+    await this.consulClient.agent.service.register({
+      id: instance.id,
+      name: instance.serviceName,
+      address: instance.host,
+      port: instance.port,
+      tags: instance.tags,
+      meta: instance.metadata,
+      check: {
+        http: `http://${instance.host}:${instance.port}/health`,
+        interval: '10s',
+        timeout: '3s'
+      }
+    });
+  }
+
+  async deregister(instanceId: string): Promise<void> {
+    await this.consulClient.agent.service.deregister(instanceId);
+  }
+
+  async discover(serviceName: string): Promise<ServiceInstance[]> {
+    const services = await this.consulClient.health.service({
+      service: serviceName,
+      passing: true
+    });
+
+    return services[1].map(service => ({
+      id: service.Service.ID,
+      serviceName: service.Service.Service,
+      host: service.Service.Address,
+      port: service.Service.Port,
+      tags: service.Service.Tags,
+      health: 'healthy',
+      metadata: service.Service.Meta
+    }));
+  }
+}
+
+// Load Balancer
+class RoundRobinLoadBalancer implements LoadBalancer {
+  private counters = new Map<string, number>();
+
+  async selectInstance(serviceName: string, instances: ServiceInstance[]): Promise<ServiceInstance> {
+    if (instances.length === 0) {
+      throw new Error(`No healthy instances for service: ${serviceName}`);
+    }
+
+    const counter = this.counters.get(serviceName) || 0;
+    const selectedIndex = counter % instances.length;
+    
+    this.counters.set(serviceName, counter + 1);
+    
+    return instances[selectedIndex];
+  }
+}
+
+// Circuit Breaker
+class CircuitBreaker {
+  private state: CircuitState = 'CLOSED';
+  private failureCount = 0;
+  private lastFailureTime?: Date;
+  private successCount = 0;
+
+  constructor(
+    private config: CircuitBreakerConfig = {
+      failureThreshold: 5,
+      recoveryTimeout: 60000,
+      successThreshold: 3
+    }
+  ) {}
+
+  async execute<T>(operation: () => Promise<T>): Promise<T> {
+    if (this.state === 'OPEN') {
+      if (this.shouldAttemptReset()) {
+        this.state = 'HALF_OPEN';
+      } else {
+        throw new CircuitOpenError('Circuit breaker is OPEN');
+      }
+    }
+
+    try {
+      const result = await operation();
+      this.onSuccess();
+      return result;
+    } catch (error) {
+      this.onFailure();
+      throw error;
+    }
+  }
+
+  private onSuccess(): void {
+    this.failureCount = 0;
+    
+    if (this.state === 'HALF_OPEN') {
+      this.successCount++;
+      if (this.successCount >= this.config.successThreshold) {
+        this.state = 'CLOSED';
+        this.successCount = 0;
+      }
+    }
+  }
+
+  private onFailure(): void {
+    this.failureCount++;
+    this.lastFailureTime = new Date();
+    
+    if (this.failureCount >= this.config.failureThreshold) {
+      this.state = 'OPEN';
+      this.successCount = 0;
+    }
+  }
+
+  private shouldAttemptReset(): boolean {
+    if (!this.lastFailureTime) return false;
+    
+    const timeSinceLastFailure = Date.now() - this.lastFailureTime.getTime();
+    return timeSinceLastFailure >= this.config.recoveryTimeout;
+  }
+}
+```
+
+### API Gateway Pattern
+
+```typescript
+// API Gateway Implementation
+class ApiGateway {
+  constructor(
+    private serviceRegistry: ServiceRegistry,
+    private loadBalancer: LoadBalancer,
+    private authService: AuthService,
+    private rateLimiter: RateLimiter,
+    private circuitBreaker: CircuitBreaker
+  ) {}
+
+  async handleRequest(request: GatewayRequest): Promise<GatewayResponse> {
+    try {
+      // 1. Authenticate request
+      const authResult = await this.authService.authenticate(request);
+      if (!authResult.success) {
+        return this.unauthorizedResponse(authResult.error);
+      }
+
+      // 2. Apply rate limiting
+      const rateLimitResult = await this.rateLimiter.checkLimit(request);
+      if (rateLimitResult.exceeded) {
+        return this.rateLimitExceededResponse(rateLimitResult);
+      }
+
+      // 3. Route to appropriate service
+      const route = this.resolveRoute(request.path);
+      if (!route) {
+        return this.notFoundResponse();
+      }
+
+      // 4. Discover service instances
+      const instances = await this.serviceRegistry.discover(route.serviceName);
+      const targetInstance = await this.loadBalancer.selectInstance(
+        route.serviceName,
+        instances
+      );
+
+      // 5. Forward request with circuit breaker
+      const response = await this.circuitBreaker.execute(async () => {
+        return await this.forwardRequest(request, targetInstance, route);
+      });
+
+      // 6. Transform response
+      return this.transformResponse(response, route);
+
+    } catch (error) {
+      return this.errorResponse(error);
+    }
+  }
+
+  private resolveRoute(path: string): RouteConfig | null {
+    const routes: RouteConfig[] = [
+      {
+        pattern: '/api/orders/**',
+        serviceName: 'OrderService',
+        stripPrefix: '/api',
+        timeoutMs: 5000,
+        retries: 3
+      },
+      {
+        pattern: '/api/customers/**',
+        serviceName: 'CustomerService',
+        stripPrefix: '/api',
+        timeoutMs: 3000,
+        retries: 2
+      },
+      {
+        pattern: '/api/payments/**',
+        serviceName: 'PaymentService',
+        stripPrefix: '/api',
+        timeoutMs: 30000,
+        retries: 1
+      }
+    ];
+
+    return routes.find(route => this.matchPattern(path, route.pattern));
+  }
+
+  private async forwardRequest(
+    request: GatewayRequest,
+    instance: ServiceInstance,
+    route: RouteConfig
+  ): Promise<ServiceResponse> {
+    const targetUrl = `http://${instance.host}:${instance.port}${
+      request.path.replace(route.stripPrefix || '', '')
+    }`;
+
+    const forwardedHeaders = {
+      ...request.headers,
+      'X-Forwarded-For': request.clientIp,
+      'X-Request-ID': crypto.randomUUID(),
+      'X-User-ID': request.userId
+    };
+
+    return await this.httpClient.request({
+      method: request.method,
+      url: targetUrl,
+      headers: forwardedHeaders,
+      body: request.body,
+      timeout: route.timeoutMs,
+      retries: route.retries
+    });
+  }
+}
+```
+
+## Deployment and Operations
+
+### Container Orchestration
+
+```yaml
+# Kubernetes Deployment Configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: ecommerce
+  labels:
+    app: order-service
+    version: v1.2.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+        version: v1.2.0
+    spec:
+      containers:
+      - name: order-service
+        image: myregistry.com/order-service:1.2.0
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: order-service-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: order-service-config
+              key: redis-url
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: order-service-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: ecommerce
+spec:
+  selector:
+    app: order-service
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: order-service-ingress
+  namespace: ecommerce
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  tls:
+  - hosts:
+    - api.example.com
+    secretName: api-tls
+  rules:
+  - host: api.example.com
+    http:
+      paths:
+      - path: /api/orders
+        pathType: Prefix
+        backend:
+          service:
+            name: order-service
+            port:
+              number: 80
+```
+
+### Observability and Monitoring
+
+```typescript
+// Distributed Tracing
+class TracingService {
+  constructor(private tracer: Tracer) {}
+
+  async traceServiceCall<T>(
+    operationName: string,
+    serviceCall: (span: Span) => Promise<T>
+  ): Promise<T> {
+    const span = this.tracer.startSpan(operationName);
+    
+    try {
+      span.setTag('service.name', process.env.SERVICE_NAME);
+      span.setTag('service.version', process.env.SERVICE_VERSION);
+      
+      const result = await serviceCall(span);
+      span.setTag('success', true);
+      return result;
+    } catch (error) {
+      span.setTag('success', false);
+      span.setTag('error', true);
+      span.log({
+        event: 'error',
+        message: error.message,
+        stack: error.stack
+      });
+      throw error;
+    } finally {
+      span.finish();
+    }
+  }
+}
+
+// Metrics Collection
+class MetricsService {
+  private requestCounter = new Counter({
+    name: 'http_requests_total',
+    help: 'Total number of HTTP requests',
+    labelNames: ['method', 'route', 'status_code']
+  });
+
+  private requestDuration = new Histogram({
+    name: 'http_request_duration_seconds',
+    help: 'HTTP request duration in seconds',
+    labelNames: ['method', 'route'],
+    buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+  });
+
+  private businessMetrics = new Gauge({
+    name: 'business_metric',
+    help: 'Business-specific metrics',
+    labelNames: ['metric_name', 'service']
+  });
+
+  recordHttpRequest(method: string, route: string, statusCode: number, duration: number): void {
+    this.requestCounter.inc({
+      method,
+      route,
+      status_code: statusCode.toString()
+    });
+
+    this.requestDuration.observe(
+      { method, route },
+      duration / 1000 // Convert to seconds
+    );
+  }
+
+  recordBusinessMetric(metricName: string, value: number): void {
+    this.businessMetrics.set(
+      { metric_name: metricName, service: process.env.SERVICE_NAME || 'unknown' },
+      value
+    );
+  }
+}
+
+// Health Checks
+class HealthCheckService {
+  private checks: Map<string, HealthCheck> = new Map();
+
+  addCheck(name: string, check: HealthCheck): void {
+    this.checks.set(name, check);
+  }
+
+  async getHealthStatus(): Promise<HealthStatus> {
+    const results = new Map<string, CheckResult>();
+    let overallStatus = 'healthy';
+
+    for (const [name, check] of this.checks) {
+      try {
+        const result = await Promise.race([
+          check.execute(),
+          this.timeout(5000) // 5 second timeout
+        ]);
+        
+        results.set(name, result);
+        
+        if (result.status !== 'healthy') {
+          overallStatus = result.status;
+        }
+      } catch (error) {
+        results.set(name, {
+          status: 'unhealthy',
+          message: error.message,
+          timestamp: new Date()
+        });
+        overallStatus = 'unhealthy';
+      }
+    }
+
+    return {
+      status: overallStatus,
+      timestamp: new Date(),
+      checks: Object.fromEntries(results)
+    };
+  }
+
+  private timeout(ms: number): Promise<never> {
+    return new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Health check timeout')), ms);
+    });
+  }
+}
+
+// Database Health Check
+class DatabaseHealthCheck implements HealthCheck {
+  constructor(private database: Database) {}
+
+  async execute(): Promise<CheckResult> {
+    try {
+      await this.database.query('SELECT 1');
+      return {
+        status: 'healthy',
+        message: 'Database connection successful',
+        timestamp: new Date()
+      };
+    } catch (error) {
+      return {
+        status: 'unhealthy',
+        message: `Database connection failed: ${error.message}`,
+        timestamp: new Date()
+      };
+    }
+  }
+}
+```
+
+## Production Implementation Checklist
+
+- [ ] **Service Boundaries**: Clear domain boundaries and minimal coupling
+- [ ] **Data Isolation**: Database per service with proper data ownership
+- [ ] **Communication Patterns**: Async messaging for integration, sync for queries
+- [ ] **Service Discovery**: Automated service registration and discovery
+- [ ] **Load Balancing**: Proper load distribution and health checks
+- [ ] **Circuit Breakers**: Fault tolerance and cascade failure prevention
+- [ ] **API Gateway**: Centralized routing, auth, and cross-cutting concerns
+- [ ] **Distributed Tracing**: Request correlation across service boundaries
+- [ ] **Monitoring**: Comprehensive metrics, logging, and alerting
+- [ ] **Security**: Service-to-service authentication and authorization
+
+<Callout type="success">
+Organizations adopting microservices report 50% faster feature delivery, 60% improvement in system reliability, and 40% reduction in deployment time.
+</Callout>
+
+---
+
+*Explore our complete [Microservices Framework](https://github.com/vimasa-consulting/microservices-framework) for production-ready implementation patterns.* 
