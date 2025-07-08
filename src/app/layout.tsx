@@ -4,7 +4,7 @@ import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import AnalyticsProvider from '@/components/AnalyticsProvider'
+import GTMProvider from '@/components/GTMProvider'
 import ChakraProvider from '@/components/ChakraProvider'
 import { Suspense } from 'react'
 import '@/styles/globals.css'
@@ -248,7 +248,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} antialiased`}>
         <ChakraProvider>
-          <AnalyticsProvider>
+          <GTMProvider>
             <ErrorBoundary>
               <div className="flex flex-col min-h-screen">
                 <ErrorBoundary fallback={<div className="h-16 bg-white border-b border-gray-200 animate-pulse"></div>}>
@@ -276,7 +276,7 @@ export default function RootLayout({
                 </ErrorBoundary>
               </div>
             </ErrorBoundary>
-          </AnalyticsProvider>
+          </GTMProvider>
         </ChakraProvider>
       </body>
     </html>
