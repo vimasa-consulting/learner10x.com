@@ -1,0 +1,868 @@
+---
+title: "API Documentation & Design"
+description: "Design and document APIs that developers love to use and maintain. Master REST, GraphQL, OpenAPI specifications, and create comprehensive documentation that drives adoption."
+category: "developers"
+tags: ["api", "rest", "graphql", "openapi", "documentation", "design"]
+publishedAt: "2024-01-15"
+difficulty: "beginner"
+externalLinks:
+  - title: "OpenAPI Specification"
+    url: "https://swagger.io/specification/"
+    description: "Official OpenAPI 3.0 specification"
+    category: "documentation"
+  - title: "REST API Tutorial"
+    url: "https://restfulapi.net/"
+    description: "Complete REST API design guide"
+    category: "documentation"
+  - title: "GraphQL Documentation"
+    url: "https://graphql.org/learn/"
+    description: "Official GraphQL learning resource"
+    category: "documentation"
+  - title: "Postman API Documentation"
+    url: "https://learning.postman.com/docs/publishing-your-api/documenting-your-api/"
+    description: "API documentation best practices"
+    category: "tools"
+  - title: "JSON Schema"
+    url: "https://json-schema.org/"
+    description: "JSON Schema specification for API validation"
+    category: "documentation"
+relatedGuides: ["backend-development-guide", "frontend-development-guide", "testing-strategies-guide"]
+---
+
+# API Documentation & Design
+
+Create APIs that developers love to use and maintain. This comprehensive guide covers REST and GraphQL design principles, OpenAPI specifications, and documentation strategies that drive adoption.
+
+## Introduction
+
+Well-designed APIs are the foundation of modern applications. This guide provides systematic approaches to:
+
+- **REST API design** following industry standards and best practices
+- **GraphQL implementation** for flexible, efficient data fetching
+- **OpenAPI documentation** for comprehensive API specifications
+- **Interactive documentation** that accelerates developer adoption
+- **Versioning strategies** for long-term API maintenance
+
+<Callout type="info">
+Great API documentation reduces support tickets by 60% and increases developer adoption by 3x.
+</Callout>
+
+## REST API Design Principles
+
+### Resource-Based URL Structure
+
+Design URLs that represent resources, not actions:
+
+```javascript
+// Good: Resource-based URLs
+GET    /api/users              // Get all users
+GET    /api/users/123          // Get user with ID 123
+POST   /api/users              // Create new user
+PUT    /api/users/123          // Update user 123
+DELETE /api/users/123          // Delete user 123
+
+// Good: Nested resources
+GET    /api/users/123/posts    // Get posts by user 123
+POST   /api/users/123/posts    // Create post for user 123
+
+// Bad: Action-based URLs
+GET    /api/getUsers
+POST   /api/createUser
+GET    /api/getUserPosts?userId=123
+```
+
+### HTTP Status Codes
+
+Use appropriate HTTP status codes to communicate response meaning:
+
+```javascript
+// Express.js example with proper status codes
+app.get('/api/users/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+    
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  try {
+    const { error } = validateUser(req.body);
+    if (error) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        code: 'VALIDATION_ERROR',
+        details: error.details
+      });
+    }
+    
+    const user = await User.create(req.body);
+    res.status(201).json(user);
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        error: 'User already exists',
+        code: 'USER_EXISTS'
+      });
+    }
+    res.status(500).json({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+```
+
+### Request/Response Patterns
+
+Implement consistent request and response patterns:
+
+```javascript
+// Standard response envelope
+const createResponse = (data, meta = {}) => ({
+  data,
+  meta: {
+    timestamp: new Date().toISOString(),
+    version: '1.0',
+    ...meta
+  }
+});
+
+// Paginated responses
+app.get('/api/users', async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+  
+  const users = await User.findAndCountAll({
+    limit,
+    offset,
+    order: [['createdAt', 'DESC']]
+  });
+  
+  res.json(createResponse(users.rows, {
+    pagination: {
+      page,
+      limit,
+      total: users.count,
+      pages: Math.ceil(users.count / limit)
+    }
+  }));
+});
+
+// Error responses
+const createErrorResponse = (message, code, details = null) => ({
+  error: {
+    message,
+    code,
+    details,
+    timestamp: new Date().toISOString()
+  }
+});
+```
+
+## GraphQL API Design
+
+### Schema Design
+
+Create intuitive GraphQL schemas with proper type definitions:
+
+```graphql
+# User type with relationships
+type User {
+  id: ID!
+  email: String!
+  name: String!
+  avatar: String
+  posts: [Post!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Post {
+  id: ID!
+  title: String!
+  content: String!
+  author: User!
+  tags: [String!]!
+  publishedAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# Query operations
+type Query {
+  user(id: ID!): User
+  users(first: Int, after: String): UserConnection!
+  post(id: ID!): Post
+  posts(first: Int, after: String, authorId: ID): PostConnection!
+}
+
+# Mutation operations
+type Mutation {
+  createUser(input: CreateUserInput!): User!
+  updateUser(id: ID!, input: UpdateUserInput!): User!
+  deleteUser(id: ID!): Boolean!
+  
+  createPost(input: CreatePostInput!): Post!
+  updatePost(id: ID!, input: UpdatePostInput!): Post!
+  deletePost(id: ID!): Boolean!
+}
+
+# Input types
+input CreateUserInput {
+  email: String!
+  name: String!
+  avatar: String
+}
+
+input UpdateUserInput {
+  name: String
+  avatar: String
+}
+
+input CreatePostInput {
+  title: String!
+  content: String!
+  tags: [String!]!
+  publishedAt: DateTime
+}
+
+# Connection types for pagination
+type UserConnection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+}
+
+type UserEdge {
+  node: User!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+```
+
+### Resolver Implementation
+
+Implement efficient resolvers with proper error handling:
+
+```javascript
+// GraphQL resolvers with DataLoader for N+1 prevention
+const { DataLoader } = require('dataloader');
+
+// DataLoader for batching user queries
+const userLoader = new DataLoader(async (userIds) => {
+  const users = await User.findAll({
+    where: { id: userIds }
+  });
+  return userIds.map(id => users.find(user => user.id === id));
+});
+
+const resolvers = {
+  Query: {
+    user: async (parent, { id }) => {
+      try {
+        const user = await userLoader.load(id);
+        if (!user) {
+          throw new Error('User not found');
+        }
+        return user;
+      } catch (error) {
+        throw new Error(`Failed to fetch user: ${error.message}`);
+      }
+    },
+    
+    users: async (parent, { first = 10, after }) => {
+      try {
+        const offset = after ? parseInt(Buffer.from(after, 'base64').toString()) : 0;
+        const users = await User.findAll({
+          limit: first + 1,
+          offset,
+          order: [['createdAt', 'DESC']]
+        });
+        
+        const hasNextPage = users.length > first;
+        const edges = users.slice(0, first).map((user, index) => ({
+          node: user,
+          cursor: Buffer.from((offset + index).toString()).toString('base64')
+        }));
+        
+        return {
+          edges,
+          pageInfo: {
+            hasNextPage,
+            hasPreviousPage: offset > 0,
+            startCursor: edges[0]?.cursor,
+            endCursor: edges[edges.length - 1]?.cursor
+          }
+        };
+      } catch (error) {
+        throw new Error(`Failed to fetch users: ${error.message}`);
+      }
+    }
+  },
+  
+  Mutation: {
+    createUser: async (parent, { input }) => {
+      try {
+        const user = await User.create(input);
+        return user;
+      } catch (error) {
+        if (error.name === 'SequelizeUniqueConstraintError') {
+          throw new Error('User with this email already exists');
+        }
+        throw new Error(`Failed to create user: ${error.message}`);
+      }
+    }
+  },
+  
+  User: {
+    posts: async (user) => {
+      return await Post.findAll({
+        where: { authorId: user.id },
+        order: [['createdAt', 'DESC']]
+      });
+    }
+  }
+};
+```
+
+## OpenAPI Documentation
+
+### Specification Structure
+
+Create comprehensive OpenAPI specifications:
+
+```yaml
+openapi: 3.0.3
+info:
+  title: User Management API
+  description: |
+    A comprehensive API for managing users and posts in a social platform.
+    
+    ## Authentication
+    This API uses JWT tokens for authentication. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your-jwt-token>
+    ```
+    
+    ## Rate Limiting
+    API calls are limited to 100 requests per 15-minute window per IP address.
+    
+    ## Error Handling
+    All endpoints return consistent error responses with appropriate HTTP status codes.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+    url: https://example.com/support
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: https://staging-api.example.com/v1
+    description: Staging server
+  - url: http://localhost:3000/api/v1
+    description: Development server
+
+paths:
+  /users:
+    get:
+      summary: Get all users
+      description: Retrieve a paginated list of all users
+      tags:
+        - Users
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of users per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: search
+          in: query
+          description: Search users by name or email
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create a new user
+      description: Create a new user account
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+                  meta:
+                    $ref: '#/components/schemas/ResponseMeta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/{id}:
+    get:
+      summary: Get user by ID
+      description: Retrieve a specific user by their ID
+      tags:
+        - Users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+                  meta:
+                    $ref: '#/components/schemas/ResponseMeta'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique user identifier
+        email:
+          type: string
+          format: email
+          description: User's email address
+        name:
+          type: string
+          description: User's full name
+        avatar:
+          type: string
+          format: uri
+          description: URL to user's avatar image
+        createdAt:
+          type: string
+          format: date-time
+          description: When the user was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the user was last updated
+      required:
+        - id
+        - email
+        - name
+        - createdAt
+        - updatedAt
+
+    CreateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: User's full name
+        avatar:
+          type: string
+          format: uri
+          description: URL to user's avatar image
+      required:
+        - email
+        - name
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Human-readable error message
+            code:
+              type: string
+              description: Machine-readable error code
+            details:
+              type: object
+              description: Additional error details
+            timestamp:
+              type: string
+              format: date-time
+              description: When the error occurred
+          required:
+            - message
+            - code
+            - timestamp
+
+    PaginationMeta:
+      type: object
+      properties:
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+              description: Current page number
+            limit:
+              type: integer
+              description: Items per page
+            total:
+              type: integer
+              description: Total number of items
+            pages:
+              type: integer
+              description: Total number of pages
+          required:
+            - page
+            - limit
+            - total
+            - pages
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+
+    ResponseMeta:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+```
+
+## Interactive Documentation
+
+### Swagger UI Integration
+
+Set up Swagger UI for interactive API documentation:
+
+```javascript
+// Express.js setup with Swagger UI
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+
+const options = {
+  definition: {
+    openapi: '3.0.3',
+    info: {
+      title: 'User Management API',
+      version: '1.0.0',
+      description: 'A comprehensive API for managing users and posts',
+    },
+    servers: [
+      {
+        url: process.env.NODE_ENV === 'production' 
+          ? 'https://api.example.com/v1'
+          : 'http://localhost:3000/api/v1',
+      },
+    ],
+  },
+  apis: ['./routes/*.js', './models/*.js'], // paths to files containing OpenAPI definitions
+};
+
+const specs = swaggerJsdoc(options);
+
+// Custom CSS for better styling
+const customCss = `
+  .swagger-ui .topbar { display: none; }
+  .swagger-ui .info h1 { color: #3b82f6; }
+  .swagger-ui .scheme-container { background: #f8fafc; }
+`;
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  customCss,
+  customSiteTitle: 'User Management API Documentation',
+  customfavIcon: '/favicon.ico',
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    docExpansion: 'none',
+    filter: true,
+    showExtensions: true,
+    showCommonExtensions: true,
+  }
+}));
+```
+
+## API Versioning Strategies
+
+### URL Versioning
+
+```javascript
+// Version-specific routes
+app.use('/api/v1', require('./routes/v1'));
+app.use('/api/v2', require('./routes/v2'));
+
+// Version detection middleware
+const versionMiddleware = (req, res, next) => {
+  const version = req.path.split('/')[2]; // Extract version from path
+  req.apiVersion = version;
+  next();
+};
+
+// Backward compatibility handling
+app.use('/api/v1/users', (req, res, next) => {
+  // Transform v1 request to v2 format
+  if (req.body.fullName) {
+    req.body.name = req.body.fullName;
+    delete req.body.fullName;
+  }
+  next();
+});
+```
+
+### Header Versioning
+
+```javascript
+// Accept version in headers
+const headerVersionMiddleware = (req, res, next) => {
+  const version = req.headers['api-version'] || req.headers['accept-version'] || 'v1';
+  req.apiVersion = version;
+  
+  // Set response headers
+  res.setHeader('API-Version', version);
+  res.setHeader('Supported-Versions', 'v1, v2');
+  
+  next();
+};
+```
+
+## Our Complete API Development Methodology
+
+<GitHubShowcase 
+  repo="vimasa-consulting/api-development-framework"
+  description="Explore our comprehensive API development framework with OpenAPI specifications, automated testing, and documentation generation used in production APIs serving 10M+ requests daily."
+/>
+
+## Documentation Tools & Automation
+
+### Automated Documentation Generation
+
+```javascript
+// Generate documentation from code comments
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Get all users
+ *     tags: [Users]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *     responses:
+ *       200:
+ *         description: List of users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ */
+app.get('/api/users', async (req, res) => {
+  // Implementation
+});
+```
+
+### API Testing Integration
+
+```javascript
+// Jest tests for API endpoints
+describe('User API', () => {
+  test('GET /api/users should return paginated users', async () => {
+    const response = await request(app)
+      .get('/api/users?page=1&limit=10')
+      .expect(200);
+
+    expect(response.body.data).toBeInstanceOf(Array);
+    expect(response.body.meta.pagination).toHaveProperty('page', 1);
+    expect(response.body.meta.pagination).toHaveProperty('limit', 10);
+  });
+
+  test('POST /api/users should create user', async () => {
+    const userData = {
+      email: 'test@example.com',
+      name: 'Test User'
+    };
+
+    const response = await request(app)
+      .post('/api/users')
+      .send(userData)
+      .expect(201);
+
+    expect(response.body.data).toHaveProperty('id');
+    expect(response.body.data.email).toBe(userData.email);
+  });
+});
+```
+
+## Production API Checklist
+
+When deploying APIs to production:
+
+- [ ] **Documentation**: Complete OpenAPI specification with examples
+- [ ] **Authentication**: JWT tokens with proper expiration and refresh
+- [ ] **Rate Limiting**: Prevent abuse with configurable limits
+- [ ] **Validation**: Input validation with detailed error messages
+- [ ] **Error Handling**: Consistent error responses with proper status codes
+- [ ] **Logging**: Comprehensive request/response logging
+- [ ] **Monitoring**: API performance and error rate monitoring
+- [ ] **Versioning**: Clear versioning strategy with backward compatibility
+- [ ] **Security**: CORS, security headers, and input sanitization
+- [ ] **Testing**: Comprehensive API tests with high coverage
+
+<Callout type="success">
+Following these practices ensures your APIs are ready for production use with excellent developer experience.
+</Callout>
+
+## External Resources for Continued Learning
+
+- **[OpenAPI Specification](https://swagger.io/specification/)**: Official OpenAPI 3.0 specification
+- **[REST API Tutorial](https://restfulapi.net/)**: Complete REST API design guide
+- **[GraphQL Documentation](https://graphql.org/learn/)**: Official GraphQL learning resource
+- **[Postman API Documentation](https://learning.postman.com/docs/publishing-your-api/documenting-your-api/)**: API documentation best practices
+- **[JSON Schema](https://json-schema.org/)**: JSON Schema specification for API validation
+
+## Conclusion
+
+Great API documentation is as important as the API itself. By following REST principles, leveraging GraphQL when appropriate, and maintaining comprehensive documentation, you create APIs that developers love to use and maintain.
+
+The combination of well-designed endpoints, clear documentation, and interactive tools reduces integration time and support overhead while increasing developer satisfaction and API adoption.
+
+---
+
+*This guide is part of our comprehensive technical education platform. Explore our [API development methodology](https://github.com/vimasa-consulting/api-development-framework) for more production-ready practices.* 

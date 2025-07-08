@@ -1,0 +1,1125 @@
+---
+title: "Development Tools & Environment"
+description: "Set up and optimize development tools for maximum productivity. Master IDE configuration, debugging tools, productivity extensions, and development environment configuration for efficient coding workflows."
+category: "developers"
+tags: ["development-tools", "ide", "debugging", "productivity", "automation", "environment"]
+publishedAt: "2024-01-15"
+difficulty: "beginner"
+externalLinks:
+  - title: "VS Code Documentation"
+    url: "https://code.visualstudio.com/docs"
+    description: "Official Visual Studio Code documentation"
+    category: "documentation"
+  - title: "Chrome DevTools"
+    url: "https://developer.chrome.com/docs/devtools/"
+    description: "Chrome Developer Tools documentation"
+    category: "tools"
+  - title: "Docker Documentation"
+    url: "https://docs.docker.com/"
+    description: "Docker containerization platform"
+    category: "tools"
+  - title: "Postman Documentation"
+    url: "https://learning.postman.com/"
+    description: "API testing and development tool"
+    category: "tools"
+  - title: "Terminal Best Practices"
+    url: "https://www.gnu.org/software/bash/manual/"
+    description: "Bash shell and terminal usage guide"
+    category: "documentation"
+relatedGuides: ["git-workflow-guide", "testing-strategies-guide", "code-quality-guide"]
+---
+
+# Development Tools & Environment
+
+Set up and optimize your development environment for maximum productivity. Master IDE configuration, debugging tools, productivity extensions, and automation that streamline your coding workflow and boost efficiency.
+
+## Introduction
+
+A well-configured development environment is crucial for productivity and code quality. This guide covers:
+
+- **IDE Setup**: Visual Studio Code configuration and essential extensions
+- **Debugging Tools**: Browser DevTools, debuggers, and profiling tools
+- **Terminal & Shell**: Command-line productivity and automation
+- **Environment Management**: Docker, virtual environments, and consistency
+- **Productivity Tools**: Code snippets, shortcuts, and workflow automation
+
+<Callout type="info">
+Developers with optimized development environments are 40% more productive and write 25% fewer bugs compared to those using default configurations.
+</Callout>
+
+## IDE Configuration (Visual Studio Code)
+
+### Essential VS Code Setup
+
+Configure VS Code for optimal development experience:
+
+```json
+// settings.json - VS Code user settings
+{
+  // Editor Configuration
+  "editor.fontSize": 14,
+  "editor.fontFamily": "Fira Code, Consolas, 'Courier New', monospace",
+  "editor.fontLigatures": true,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.wordWrap": "bounded",
+  "editor.wordWrapColumn": 100,
+  "editor.rulers": [80, 100],
+  "editor.renderWhitespace": "boundary",
+  "editor.minimap.enabled": true,
+  "editor.minimap.renderCharacters": false,
+  
+  // Code Formatting
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.organizeImports": true
+  },
+  
+  // File Management
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.git": true,
+    "**/.DS_Store": true
+  },
+  
+  // Search and Replace
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/*.log": true
+  },
+  
+  // Terminal Configuration
+  "terminal.integrated.fontSize": 13,
+  "terminal.integrated.fontFamily": "Fira Code, Menlo, Monaco, 'Courier New', monospace",
+  "terminal.integrated.shell.osx": "/bin/zsh",
+  "terminal.integrated.shell.linux": "/bin/bash",
+  
+  // Git Integration
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+  "git.showPushSuccessNotification": true,
+  
+  // Language-specific Settings
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "editor.quickSuggestions": false
+  },
+  
+  // Workbench
+  "workbench.colorTheme": "One Dark Pro",
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.editor.enablePreview": false,
+  "workbench.editor.showTabs": true,
+  "workbench.editor.tabSizing": "shrink",
+  
+  // Extensions
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact",
+    "typescript": "typescriptreact"
+  },
+  
+  // Performance
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/dist/**": true
+  }
+}
+```
+
+### Essential VS Code Extensions
+
+Install productivity-boosting extensions:
+
+```json
+// Essential Extensions List
+{
+  "recommendations": [
+    // Language Support
+    "ms-vscode.vscode-typescript-next",
+    "bradlc.vscode-tailwindcss",
+    "ms-python.python",
+    "golang.go",
+    
+    // Code Quality
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "ms-vscode.vscode-json",
+    "streetsidesoftware.code-spell-checker",
+    
+    // Git & Version Control
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    "donjayamanne.githistory",
+    
+    // Productivity
+    "ms-vscode.sublime-keybindings",
+    "alefragnani.bookmarks",
+    "formulahendry.auto-rename-tag",
+    "ms-vscode.vscode-todo-highlight",
+    "gruntfuggly.todo-tree",
+    
+    // Debugging & Testing
+    "ms-vscode.vscode-jest",
+    "hbenl.vscode-test-explorer",
+    "ms-vsliveshare.vsliveshare",
+    
+    // Docker & DevOps
+    "ms-azuretools.vscode-docker",
+    "ms-kubernetes-tools.vscode-kubernetes-tools",
+    "redhat.vscode-yaml",
+    
+    // API Development
+    "humao.rest-client",
+    "ms-vscode.vscode-json",
+    "quicktype.quicktype",
+    
+    // Themes & Icons
+    "zhuangtongfa.material-theme",
+    "pkief.material-icon-theme",
+    "rokoroku.vscode-theme-darcula",
+    
+    // Utilities
+    "ms-vscode.hexeditor",
+    "bierner.markdown-preview-enhanced",
+    "yzhang.markdown-all-in-one",
+    "ms-vscode.notepadplusplus-keybindings"
+  ]
+}
+```
+
+### Custom Keybindings
+
+Configure productive keyboard shortcuts:
+
+```json
+// keybindings.json
+[
+  // Navigation
+  {
+    "key": "cmd+shift+o",
+    "command": "workbench.action.quickOpen"
+  },
+  {
+    "key": "cmd+p",
+    "command": "workbench.action.quickOpenPreviousRecentlyUsedEditorInGroup"
+  },
+  
+  // Multi-cursor
+  {
+    "key": "cmd+d",
+    "command": "editor.action.addSelectionToNextFindMatch"
+  },
+  {
+    "key": "cmd+shift+l",
+    "command": "editor.action.selectHighlights"
+  },
+  
+  // Code manipulation
+  {
+    "key": "cmd+shift+k",
+    "command": "editor.action.deleteLines"
+  },
+  {
+    "key": "alt+up",
+    "command": "editor.action.moveLinesUpAction"
+  },
+  {
+    "key": "alt+down",
+    "command": "editor.action.moveLinesDownAction"
+  },
+  
+  // Terminal
+  {
+    "key": "ctrl+`",
+    "command": "workbench.action.terminal.toggleTerminal"
+  },
+  {
+    "key": "cmd+shift+c",
+    "command": "workbench.action.terminal.openNativeConsole"
+  },
+  
+  // Git
+  {
+    "key": "cmd+shift+g",
+    "command": "workbench.view.scm"
+  },
+  
+  // Search and Replace
+  {
+    "key": "cmd+shift+f",
+    "command": "workbench.action.findInFiles"
+  },
+  {
+    "key": "cmd+shift+h",
+    "command": "workbench.action.replaceInFiles"
+  }
+]
+```
+
+### Code Snippets
+
+Create reusable code snippets:
+
+```json
+// javascript.json - JavaScript snippets
+{
+  "Console log": {
+    "prefix": "cl",
+    "body": [
+      "console.log('$1:', $1);"
+    ],
+    "description": "Console log with label"
+  },
+  
+  "React Functional Component": {
+    "prefix": "rfc",
+    "body": [
+      "import React from 'react';",
+      "",
+      "const $1 = () => {",
+      "  return (",
+      "    <div>",
+      "      $2",
+      "    </div>",
+      "  );",
+      "};",
+      "",
+      "export default $1;"
+    ],
+    "description": "React functional component"
+  },
+  
+  "Express Route Handler": {
+    "prefix": "route",
+    "body": [
+      "app.$1('$2', async (req, res) => {",
+      "  try {",
+      "    $3",
+      "    res.json({ success: true });",
+      "  } catch (error) {",
+      "    res.status(500).json({ error: error.message });",
+      "  }",
+      "});"
+    ],
+    "description": "Express route handler with error handling"
+  },
+  
+  "Jest Test": {
+    "prefix": "test",
+    "body": [
+      "describe('$1', () => {",
+      "  test('$2', () => {",
+      "    // Arrange",
+      "    $3",
+      "    ",
+      "    // Act",
+      "    $4",
+      "    ",
+      "    // Assert",
+      "    $5",
+      "  });",
+      "});"
+    ],
+    "description": "Jest test with AAA structure"
+  },
+  
+  "Try-Catch Block": {
+    "prefix": "try",
+    "body": [
+      "try {",
+      "  $1",
+      "} catch (error) {",
+      "  console.error('Error:', error);",
+      "  $2",
+      "}"
+    ],
+    "description": "Try-catch block"
+  }
+}
+```
+
+## Browser DevTools
+
+### Chrome DevTools Mastery
+
+Master browser debugging and profiling:
+
+```javascript
+// Console debugging techniques
+console.log('Basic logging');
+console.info('Info message');
+console.warn('Warning message');
+console.error('Error message');
+
+// Advanced console methods
+console.table([
+  { name: 'John', age: 30 },
+  { name: 'Jane', age: 25 }
+]);
+
+console.group('User Details');
+console.log('Name: John Doe');
+console.log('Age: 30');
+console.groupEnd();
+
+console.time('API Call');
+fetch('/api/users')
+  .then(response => response.json())
+  .then(data => {
+    console.timeEnd('API Call');
+    console.log('Users:', data);
+  });
+
+// Conditional logging
+console.assert(1 + 1 === 3, 'Math is broken!');
+
+// Stack trace
+console.trace('Current call stack');
+
+// Performance monitoring
+performance.mark('start-operation');
+// ... some operation
+performance.mark('end-operation');
+performance.measure('operation-duration', 'start-operation', 'end-operation');
+console.log(performance.getEntriesByType('measure'));
+```
+
+### Debugging Techniques
+
+Implement effective debugging strategies:
+
+```javascript
+// Debugger statements
+function complexCalculation(data) {
+  debugger; // Execution will pause here in DevTools
+  
+  const processed = data.map(item => {
+    debugger; // Conditional breakpoint
+    return item * 2;
+  });
+  
+  return processed;
+}
+
+// Console debugging with context
+const debugUser = (user, context = '') => {
+  console.group(`🐛 Debug User ${context}`);
+  console.log('User object:', user);
+  console.log('Type:', typeof user);
+  console.log('Keys:', Object.keys(user));
+  console.log('JSON:', JSON.stringify(user, null, 2));
+  console.groupEnd();
+};
+
+// Performance debugging
+const measurePerformance = (fn, label) => {
+  return (...args) => {
+    console.time(label);
+    const result = fn(...args);
+    console.timeEnd(label);
+    return result;
+  };
+};
+
+// Usage
+const optimizedFunction = measurePerformance(
+  (arr) => arr.filter(x => x > 0),
+  'Filter Positive Numbers'
+);
+
+// Memory leak detection
+const trackMemoryUsage = () => {
+  if (performance.memory) {
+    console.log({
+      used: `${Math.round(performance.memory.usedJSHeapSize / 1048576)} MB`,
+      total: `${Math.round(performance.memory.totalJSHeapSize / 1048576)} MB`,
+      limit: `${Math.round(performance.memory.jsHeapSizeLimit / 1048576)} MB`
+    });
+  }
+};
+
+setInterval(trackMemoryUsage, 5000);
+```
+
+### Network Debugging
+
+Monitor and debug network requests:
+
+```javascript
+// Fetch with detailed logging
+const debugFetch = async (url, options = {}) => {
+  console.group(`🌐 API Request: ${url}`);
+  console.log('Options:', options);
+  console.time('Request Duration');
+  
+  try {
+    const response = await fetch(url, options);
+    console.timeEnd('Request Duration');
+    
+    console.log('Status:', response.status);
+    console.log('Headers:', Object.fromEntries(response.headers));
+    
+    const data = await response.json();
+    console.log('Response:', data);
+    console.groupEnd();
+    
+    return data;
+  } catch (error) {
+    console.timeEnd('Request Duration');
+    console.error('Request failed:', error);
+    console.groupEnd();
+    throw error;
+  }
+};
+
+// Network performance monitoring
+const monitorNetworkPerformance = () => {
+  const observer = new PerformanceObserver((list) => {
+    list.getEntries().forEach((entry) => {
+      if (entry.entryType === 'navigation') {
+        console.log('Navigation Performance:', {
+          dns: entry.domainLookupEnd - entry.domainLookupStart,
+          connect: entry.connectEnd - entry.connectStart,
+          request: entry.responseStart - entry.requestStart,
+          response: entry.responseEnd - entry.responseStart,
+          total: entry.responseEnd - entry.fetchStart
+        });
+      }
+    });
+  });
+  
+  observer.observe({ entryTypes: ['navigation'] });
+};
+```
+
+## Terminal and Shell Configuration
+
+### Zsh/Bash Configuration
+
+Set up productive shell environment:
+
+```bash
+# .zshrc / .bashrc configuration
+# Oh My Zsh installation
+sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
+# Theme
+ZSH_THEME="powerlevel10k/powerlevel10k"
+
+# Plugins
+plugins=(
+  git
+  node
+  npm
+  yarn
+  docker
+  kubectl
+  vscode
+  history
+  colored-man-pages
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+)
+
+# Aliases
+alias ll="ls -la"
+alias la="ls -la"
+alias l="ls -l"
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+
+# Git aliases
+alias g="git"
+alias ga="git add"
+alias gc="git commit"
+alias gp="git push"
+alias gl="git pull"
+alias gs="git status"
+alias gd="git diff"
+alias gb="git branch"
+alias gco="git checkout"
+
+# Development aliases
+alias ni="npm install"
+alias ns="npm start"
+alias nt="npm test"
+alias nb="npm run build"
+alias nr="npm run"
+
+# Docker aliases
+alias d="docker"
+alias dc="docker-compose"
+alias dps="docker ps"
+alias di="docker images"
+
+# Kubernetes aliases
+alias k="kubectl"
+alias kg="kubectl get"
+alias kd="kubectl describe"
+alias ka="kubectl apply"
+
+# Functions
+mkcd() {
+  mkdir -p "$1" && cd "$1"
+}
+
+# Extract function
+extract() {
+  if [ -f $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1     ;;
+      *.tar.gz)    tar xzf $1     ;;
+      *.bz2)       bunzip2 $1     ;;
+      *.rar)       unrar e $1     ;;
+      *.gz)        gunzip $1      ;;
+      *.tar)       tar xf $1      ;;
+      *.tbz2)      tar xjf $1     ;;
+      *.tgz)       tar xzf $1     ;;
+      *.zip)       unzip $1       ;;
+      *.Z)         uncompress $1  ;;
+      *.7z)        7z x $1        ;;
+      *)           echo "'$1' cannot be extracted via extract()" ;;
+    esac
+  else
+    echo "'$1' is not a valid file"
+  fi
+}
+
+# Environment variables
+export EDITOR="code"
+export NODE_ENV="development"
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+### Terminal Productivity Tools
+
+Install and configure essential terminal tools:
+
+```bash
+# Install essential tools
+# macOS with Homebrew
+brew install htop tree jq bat exa fd fzf ripgrep
+
+# Ubuntu/Debian
+sudo apt install htop tree jq bat fd-find fzf ripgrep
+
+# Improved ls alternative
+alias ls="exa --icons"
+alias tree="exa --tree"
+
+# Improved cat alternative
+alias cat="bat"
+
+# Fuzzy finder configuration
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+export FZF_DEFAULT_COMMAND='fd --type f'
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+
+# fzf key bindings
+# Ctrl+T - search files
+# Ctrl+R - search history
+# Alt+C - search directories
+
+# Custom functions using fzf
+# Search and open file in VS Code
+fcode() {
+  local file
+  file=$(fzf --preview 'bat --color=always --style=header,grid --line-range :300 {}')
+  [ -n "$file" ] && code "$file"
+}
+
+# Search and cd to directory
+fcd() {
+  local dir
+  dir=$(find . -type d 2> /dev/null | fzf)
+  [ -n "$dir" ] && cd "$dir"
+}
+
+# Search git branches
+fgb() {
+  local branch
+  branch=$(git branch --all | grep -v HEAD | sed "s/.* //" | sed "s#remotes/[^/]*/##" | sort -u | fzf)
+  [ -n "$branch" ] && git checkout "$branch"
+}
+```
+
+## Docker Development Environment
+
+### Development Docker Setup
+
+Create consistent development environments:
+
+```dockerfile
+# Dockerfile.dev - Development environment
+FROM node:18-alpine
+
+# Install development tools
+RUN apk add --no-cache git curl bash zsh
+
+# Install Oh My Zsh
+RUN sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || true
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies with development packages
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 3000
+
+# Development command with hot reload
+CMD ["npm", "run", "dev"]
+```
+
+```yaml
+# docker-compose.dev.yml - Development services
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://user:password@postgres:5432/myapp_dev
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    command: npm run dev
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: myapp_dev
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+  node_modules:
+```
+
+### Development Scripts
+
+Automate common development tasks:
+
+```bash
+#!/bin/bash
+# scripts/dev-setup.sh - Development environment setup
+
+echo "🚀 Setting up development environment..."
+
+# Check prerequisites
+command -v docker >/dev/null 2>&1 || { echo "Docker is required but not installed. Aborting." >&2; exit 1; }
+command -v docker-compose >/dev/null 2>&1 || { echo "Docker Compose is required but not installed. Aborting." >&2; exit 1; }
+
+# Copy environment file
+if [ ! -f .env ]; then
+  cp .env.example .env
+  echo "📝 Created .env file from .env.example"
+fi
+
+# Build development environment
+echo "🏗️  Building development containers..."
+docker-compose -f docker-compose.dev.yml build
+
+# Start services
+echo "🎬 Starting development services..."
+docker-compose -f docker-compose.dev.yml up -d
+
+# Wait for database to be ready
+echo "⏳ Waiting for database..."
+sleep 10
+
+# Run database migrations
+echo "🗃️  Running database migrations..."
+docker-compose -f docker-compose.dev.yml exec app npm run migrate
+
+# Seed database
+echo "🌱 Seeding database..."
+docker-compose -f docker-compose.dev.yml exec app npm run seed
+
+echo "✅ Development environment is ready!"
+echo "🌐 Application: http://localhost:3000"
+echo "🗃️  Database Admin: http://localhost:8080"
+echo "📊 Logs: docker-compose -f docker-compose.dev.yml logs -f"
+```
+
+```json
+// package.json - Development scripts
+{
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "dev:debug": "nodemon --inspect=0.0.0.0:9229 src/index.js",
+    "dev:docker": "docker-compose -f docker-compose.dev.yml up",
+    "dev:logs": "docker-compose -f docker-compose.dev.yml logs -f",
+    "dev:shell": "docker-compose -f docker-compose.dev.yml exec app sh",
+    "dev:reset": "docker-compose -f docker-compose.dev.yml down -v && npm run dev:docker",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "prepare": "husky install"
+  }
+}
+```
+
+## API Development Tools
+
+### Postman/Insomnia Configuration
+
+Set up efficient API testing:
+
+```json
+// Postman Environment Configuration
+{
+  "name": "Development",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "enabled": true
+    },
+    {
+      "key": "token",
+      "value": "",
+      "enabled": true
+    }
+  ]
+}
+```
+
+```javascript
+// Postman Pre-request Script for Authentication
+pm.test("Get auth token", function () {
+  const loginRequest = {
+    url: pm.environment.get("baseUrl") + "/auth/login",
+    method: 'POST',
+    header: {
+      'Content-Type': 'application/json',
+    },
+    body: {
+      mode: 'raw',
+      raw: JSON.stringify({
+        email: "admin@example.com",
+        password: "password123"
+      })
+    }
+  };
+  
+  pm.sendRequest(loginRequest, function (err, response) {
+    if (err) {
+      console.log(err);
+    } else {
+      const jsonData = response.json();
+      pm.environment.set("token", jsonData.accessToken);
+    }
+  });
+});
+```
+
+### REST Client (VS Code Extension)
+
+Create API test files:
+
+```http
+### API Testing with REST Client
+@baseUrl = http://localhost:3000/api
+@contentType = application/json
+
+### Login to get token
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@example.com",
+  "password": "password123"
+}
+
+### Extract token from login response
+@token = {{login.response.body.accessToken}}
+
+### Get all users (authenticated)
+GET {{baseUrl}}/users
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+### Create new user
+POST {{baseUrl}}/users
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "securepassword123"
+}
+
+### Get user by ID
+@userId = 123
+GET {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{token}}
+
+### Update user
+PUT {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "name": "John Smith",
+  "email": "johnsmith@example.com"
+}
+
+### Delete user
+DELETE {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{token}}
+
+### Health check
+GET {{baseUrl}}/health
+```
+
+## Productivity Automation
+
+### Development Workflow Automation
+
+Automate repetitive tasks:
+
+```bash
+#!/bin/bash
+# scripts/create-component.sh - React component generator
+
+COMPONENT_NAME=$1
+
+if [ -z "$COMPONENT_NAME" ]; then
+  echo "Usage: ./create-component.sh ComponentName"
+  exit 1
+fi
+
+COMPONENT_DIR="src/components/$COMPONENT_NAME"
+
+# Create component directory
+mkdir -p "$COMPONENT_DIR"
+
+# Create component file
+cat > "$COMPONENT_DIR/$COMPONENT_NAME.jsx" << EOF
+import React from 'react';
+import './$COMPONENT_NAME.css';
+
+const $COMPONENT_NAME = () => {
+  return (
+    <div className="$COMPONENT_NAME">
+      <h1>$COMPONENT_NAME Component</h1>
+    </div>
+  );
+};
+
+export default $COMPONENT_NAME;
+EOF
+
+# Create CSS file
+cat > "$COMPONENT_DIR/$COMPONENT_NAME.css" << EOF
+.$COMPONENT_NAME {
+  /* Add your styles here */
+}
+EOF
+
+# Create test file
+cat > "$COMPONENT_DIR/$COMPONENT_NAME.test.jsx" << EOF
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import $COMPONENT_NAME from './$COMPONENT_NAME';
+
+describe('$COMPONENT_NAME', () => {
+  test('renders component', () => {
+    render(<$COMPONENT_NAME />);
+    expect(screen.getByText('$COMPONENT_NAME Component')).toBeInTheDocument();
+  });
+});
+EOF
+
+# Create index file
+cat > "$COMPONENT_DIR/index.js" << EOF
+export { default } from './$COMPONENT_NAME';
+EOF
+
+echo "✅ Component $COMPONENT_NAME created successfully!"
+echo "📁 Location: $COMPONENT_DIR"
+```
+
+```javascript
+// scripts/generate-api.js - API endpoint generator
+const fs = require('fs');
+const path = require('path');
+
+const generateAPIEndpoint = (entityName) => {
+  const controllerContent = `
+const ${entityName}Service = require('../services/${entityName}Service');
+
+class ${entityName}Controller {
+  async getAll(req, res) {
+    try {
+      const items = await ${entityName}Service.getAll();
+      res.json({ success: true, data: items });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async getById(req, res) {
+    try {
+      const item = await ${entityName}Service.getById(req.params.id);
+      res.json({ success: true, data: item });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async create(req, res) {
+    try {
+      const item = await ${entityName}Service.create(req.body);
+      res.status(201).json({ success: true, data: item });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async update(req, res) {
+    try {
+      const item = await ${entityName}Service.update(req.params.id, req.body);
+      res.json({ success: true, data: item });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async delete(req, res) {
+    try {
+      await ${entityName}Service.delete(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+}
+
+module.exports = new ${entityName}Controller();
+`;
+
+  // Write controller file
+  fs.writeFileSync(
+    path.join(__dirname, `../src/controllers/${entityName}Controller.js`),
+    controllerContent
+  );
+
+  console.log(`✅ Generated ${entityName}Controller.js`);
+};
+
+// Usage: node scripts/generate-api.js User
+const entityName = process.argv[2];
+if (entityName) {
+  generateAPIEndpoint(entityName);
+} else {
+  console.log('Usage: node scripts/generate-api.js EntityName');
+}
+```
+
+## Our Complete Development Tools Methodology
+
+<GitHubShowcase 
+  repo="vimasa-consulting/development-environment-framework"
+  description="Explore our comprehensive development environment framework with IDE configurations, automation scripts, and productivity tools used by 100+ developers for maximum efficiency."
+/>
+
+## Production-Ready Development Setup Checklist
+
+For optimal development productivity:
+
+- [ ] **IDE Configuration**: VS Code with essential extensions and settings
+- [ ] **Code Quality Tools**: ESLint, Prettier, and automated formatting
+- [ ] **Debugging Setup**: Browser DevTools mastery and debugging workflows
+- [ ] **Terminal Optimization**: Zsh/Bash with productivity aliases and tools
+- [ ] **Version Control**: Git configuration with aliases and hooks
+- [ ] **Environment Management**: Docker for consistent development environments
+- [ ] **API Testing**: Postman/Insomnia or REST Client setup
+- [ ] **Automation Scripts**: Custom scripts for repetitive tasks
+- [ ] **Performance Monitoring**: Profiling and debugging tools
+- [ ] **Documentation**: Team development environment documentation
+
+<Callout type="success">
+Optimized development environments increase productivity by 40% and reduce development time by 25% while improving code quality and consistency.
+</Callout>
+
+## External Resources for Continued Learning
+
+- **[VS Code Documentation](https://code.visualstudio.com/docs)**: Official Visual Studio Code documentation
+- **[Chrome DevTools](https://developer.chrome.com/docs/devtools/)**: Chrome Developer Tools documentation
+- **[Docker Documentation](https://docs.docker.com/)**: Docker containerization platform
+- **[Postman Documentation](https://learning.postman.com/)**: API testing and development tool
+- **[Terminal Best Practices](https://www.gnu.org/software/bash/manual/)**: Bash shell and terminal usage guide
+
+## Conclusion
+
+A well-configured development environment is the foundation of productive software development. By optimizing your IDE, mastering debugging tools, setting up efficient terminal workflows, and automating repetitive tasks, you can focus on what matters most—writing great code.
+
+Remember that tool mastery comes with practice. Start with the basics and gradually incorporate advanced features as you become more comfortable. The time invested in setting up and learning your development tools pays dividends in increased productivity and reduced frustration.
+
+---
+
+*This guide is part of our comprehensive technical education platform. Explore our [development environment methodology](https://github.com/vimasa-consulting/development-environment-framework) for more production-ready practices.* 

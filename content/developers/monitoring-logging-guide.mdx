@@ -1,0 +1,1150 @@
+---
+title: "Monitoring & Logging"
+description: "Implement comprehensive monitoring and logging for production systems. Master application monitoring, log management, alerting systems, and observability practices for reliable applications."
+category: "developers"
+tags: ["monitoring", "logging", "observability", "metrics", "alerting", "debugging"]
+publishedAt: "2024-01-15"
+difficulty: "intermediate"
+externalLinks:
+  - title: "Prometheus Documentation"
+    url: "https://prometheus.io/docs/"
+    description: "Open-source monitoring and alerting toolkit"
+    category: "tools"
+  - title: "Grafana Documentation"
+    url: "https://grafana.com/docs/"
+    description: "Analytics and interactive visualization platform"
+    category: "tools"
+  - title: "ELK Stack Guide"
+    url: "https://www.elastic.co/what-is/elk-stack"
+    description: "Elasticsearch, Logstash, and Kibana stack"
+    category: "tools"
+  - title: "Winston Documentation"
+    url: "https://github.com/winstonjs/winston"
+    description: "Node.js logging library"
+    category: "documentation"
+  - title: "Sentry Documentation"
+    url: "https://docs.sentry.io/"
+    description: "Application monitoring and error tracking"
+    category: "tools"
+relatedGuides: ["performance-optimization-guide", "deployment-automation-guide", "security-practices-guide"]
+---
+
+# Monitoring & Logging
+
+Build reliable, observable applications with comprehensive monitoring and logging. Master application monitoring, log management, alerting systems, and observability practices that enable proactive issue detection and rapid problem resolution.
+
+## Introduction
+
+Monitoring and logging are essential for maintaining reliable production systems. This guide covers:
+
+- **Application Monitoring**: Tracking application health, performance, and errors
+- **Log Management**: Structured logging, centralized collection, and analysis
+- **Metrics & Alerting**: Key performance indicators and proactive alerting
+- **Observability**: Distributed tracing and system visibility
+- **Incident Response**: Effective debugging and issue resolution
+
+<Callout type="info">
+Organizations with mature monitoring and logging practices resolve incidents 3x faster and reduce downtime by 60% compared to reactive approaches.
+</Callout>
+
+## Structured Logging
+
+### Winston Logger Configuration
+
+Implement comprehensive structured logging:
+
+```javascript
+// logger.js - Winston configuration
+const winston = require('winston');
+const { combine, timestamp, errors, json, colorize, printf } = winston.format;
+
+// Custom format for development
+const devFormat = printf(({ level, message, timestamp, ...meta }) => {
+  return `${timestamp} [${level}]: ${message} ${Object.keys(meta).length ? JSON.stringify(meta, null, 2) : ''}`;
+});
+
+// Create logger instance
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: combine(
+    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    errors({ stack: true }),
+    json()
+  ),
+  defaultMeta: {
+    service: process.env.SERVICE_NAME || 'api',
+    version: process.env.VERSION || '1.0.0',
+    environment: process.env.NODE_ENV || 'development'
+  },
+  transports: [
+    // File transports
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error',
+      maxsize: 5242880, // 5MB
+      maxFiles: 5
+    }),
+    new winston.transports.File({
+      filename: 'logs/combined.log',
+      maxsize: 5242880,
+      maxFiles: 5
+    })
+  ]
+});
+
+// Console transport for development
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: combine(
+      colorize(),
+      devFormat
+    )
+  }));
+} else {
+  // JSON format for production
+  logger.add(new winston.transports.Console({
+    format: combine(
+      timestamp(),
+      json()
+    )
+  }));
+}
+
+// Request logging middleware
+const requestLogger = (req, res, next) => {
+  const startTime = Date.now();
+  const requestId = req.headers['x-request-id'] || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Add request ID to request object
+  req.requestId = requestId;
+  
+  // Log request start
+  logger.info('Request started', {
+    requestId,
+    method: req.method,
+    url: req.url,
+    userAgent: req.get('User-Agent'),
+    ip: req.ip,
+    userId: req.user?.id
+  });
+
+  // Override res.send to log response
+  const originalSend = res.send;
+  res.send = function(data) {
+    const duration = Date.now() - startTime;
+    
+    logger.info('Request completed', {
+      requestId,
+      method: req.method,
+      url: req.url,
+      statusCode: res.statusCode,
+      duration,
+      responseSize: Buffer.byteLength(data || ''),
+      userId: req.user?.id
+    });
+    
+    originalSend.call(this, data);
+  };
+  
+  next();
+};
+
+module.exports = { logger, requestLogger };
+```
+
+### Application Logging Patterns
+
+Implement consistent logging patterns across your application:
+
+```javascript
+// service/userService.js
+const { logger } = require('../logger');
+
+class UserService {
+  constructor(userRepository) {
+    this.userRepository = userRepository;
+  }
+
+  async createUser(userData) {
+    const operationId = `createUser_${Date.now()}`;
+    
+    logger.info('Creating new user', {
+      operationId,
+      email: userData.email,
+      hasPassword: !!userData.password
+    });
+
+    try {
+      // Validate user data
+      this.validateUserData(userData);
+      
+      // Check for existing user
+      const existingUser = await this.userRepository.findByEmail(userData.email);
+      if (existingUser) {
+        logger.warn('User creation failed - email already exists', {
+          operationId,
+          email: userData.email
+        });
+        throw new ValidationError('User with this email already exists');
+      }
+
+      // Create user
+      const user = await this.userRepository.create(userData);
+      
+      logger.info('User created successfully', {
+        operationId,
+        userId: user.id,
+        email: user.email
+      });
+
+      return user;
+    } catch (error) {
+      logger.error('User creation failed', {
+        operationId,
+        email: userData.email,
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
+    }
+  }
+
+  async getUserById(id) {
+    const startTime = Date.now();
+    
+    try {
+      const user = await this.userRepository.findById(id);
+      
+      if (!user) {
+        logger.warn('User not found', { userId: id });
+        throw new NotFoundError(`User with ID ${id} not found`);
+      }
+
+      logger.debug('User retrieved successfully', {
+        userId: id,
+        duration: Date.now() - startTime
+      });
+
+      return user;
+    } catch (error) {
+      logger.error('Failed to get user', {
+        userId: id,
+        error: error.message,
+        duration: Date.now() - startTime
+      });
+      throw error;
+    }
+  }
+
+  validateUserData(userData) {
+    const errors = [];
+    
+    if (!userData.email) {
+      errors.push('Email is required');
+    }
+    
+    if (!userData.name) {
+      errors.push('Name is required');
+    }
+    
+    if (errors.length > 0) {
+      logger.warn('User validation failed', {
+        errors,
+        providedFields: Object.keys(userData)
+      });
+      throw new ValidationError('User validation failed', errors);
+    }
+  }
+}
+
+// Error handling middleware with logging
+const errorHandler = (error, req, res, next) => {
+  const errorInfo = {
+    requestId: req.requestId,
+    url: req.url,
+    method: req.method,
+    error: error.message,
+    stack: error.stack,
+    userId: req.user?.id
+  };
+
+  if (error.statusCode >= 500) {
+    logger.error('Server error', errorInfo);
+  } else if (error.statusCode >= 400) {
+    logger.warn('Client error', errorInfo);
+  } else {
+    logger.error('Unhandled error', errorInfo);
+  }
+
+  const statusCode = error.statusCode || 500;
+  const message = process.env.NODE_ENV === 'production' && statusCode >= 500
+    ? 'Internal server error'
+    : error.message;
+
+  res.status(statusCode).json({
+    error: {
+      message,
+      code: error.code || 'INTERNAL_ERROR',
+      requestId: req.requestId
+    }
+  });
+};
+
+module.exports = { UserService, errorHandler };
+```
+
+## Metrics Collection
+
+### Prometheus Metrics
+
+Implement comprehensive metrics collection:
+
+```javascript
+// metrics.js - Prometheus metrics
+const prometheus = require('prom-client');
+
+// Create a Registry
+const register = new prometheus.Registry();
+
+// Default metrics
+prometheus.collectDefaultMetrics({ register });
+
+// Custom metrics
+const httpRequestDuration = new prometheus.Histogram({
+  name: 'http_request_duration_ms',
+  help: 'Duration of HTTP requests in ms',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.1, 5, 15, 50, 100, 500, 1000, 5000]
+});
+
+const httpRequestTotal = new prometheus.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status_code']
+});
+
+const activeUsers = new prometheus.Gauge({
+  name: 'active_users_total',
+  help: 'Number of active users',
+  labelNames: ['type']
+});
+
+const databaseConnections = new prometheus.Gauge({
+  name: 'database_connections_active',
+  help: 'Number of active database connections'
+});
+
+const cacheHitRate = new prometheus.Gauge({
+  name: 'cache_hit_rate',
+  help: 'Cache hit rate percentage',
+  labelNames: ['cache_type']
+});
+
+const backgroundJobDuration = new prometheus.Histogram({
+  name: 'background_job_duration_ms',
+  help: 'Duration of background jobs in ms',
+  labelNames: ['job_type', 'status'],
+  buckets: [100, 500, 1000, 5000, 10000, 30000]
+});
+
+// Register metrics
+register.registerMetric(httpRequestDuration);
+register.registerMetric(httpRequestTotal);
+register.registerMetric(activeUsers);
+register.registerMetric(databaseConnections);
+register.registerMetric(cacheHitRate);
+register.registerMetric(backgroundJobDuration);
+
+// Metrics middleware
+const metricsMiddleware = (req, res, next) => {
+  const startTime = Date.now();
+  
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    const route = req.route?.path || req.path;
+    
+    httpRequestDuration
+      .labels(req.method, route, res.statusCode)
+      .observe(duration);
+    
+    httpRequestTotal
+      .labels(req.method, route, res.statusCode)
+      .inc();
+  });
+  
+  next();
+};
+
+// Business metrics tracking
+class MetricsService {
+  static trackUserLogin(userId) {
+    activeUsers.labels('logged_in').inc();
+    logger.info('User login tracked', { userId });
+  }
+
+  static trackUserLogout(userId) {
+    activeUsers.labels('logged_in').dec();
+    logger.info('User logout tracked', { userId });
+  }
+
+  static updateDatabaseConnections(count) {
+    databaseConnections.set(count);
+  }
+
+  static trackCacheHit(cacheType) {
+    // Implement cache hit tracking logic
+    const hitRate = this.calculateCacheHitRate(cacheType);
+    cacheHitRate.labels(cacheType).set(hitRate);
+  }
+
+  static trackBackgroundJob(jobType, duration, success) {
+    const status = success ? 'success' : 'failure';
+    backgroundJobDuration.labels(jobType, status).observe(duration);
+  }
+
+  static calculateCacheHitRate(cacheType) {
+    // Implement actual cache hit rate calculation
+    return Math.random() * 100; // Placeholder
+  }
+}
+
+// Metrics endpoint
+const metricsEndpoint = async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+};
+
+module.exports = {
+  register,
+  metricsMiddleware,
+  metricsEndpoint,
+  MetricsService
+};
+```
+
+### Health Check Endpoints
+
+Implement comprehensive health checks:
+
+```javascript
+// health.js - Health check system
+const { logger } = require('./logger');
+
+class HealthCheckService {
+  constructor(dependencies) {
+    this.dependencies = dependencies;
+    this.checks = new Map();
+    this.setupDefaultChecks();
+  }
+
+  setupDefaultChecks() {
+    // Database health check
+    this.addCheck('database', async () => {
+      const start = Date.now();
+      try {
+        await this.dependencies.database.authenticate();
+        return {
+          status: 'healthy',
+          responseTime: Date.now() - start,
+          details: 'Database connection successful'
+        };
+      } catch (error) {
+        return {
+          status: 'unhealthy',
+          responseTime: Date.now() - start,
+          details: error.message
+        };
+      }
+    });
+
+    // Redis health check
+    this.addCheck('redis', async () => {
+      const start = Date.now();
+      try {
+        await this.dependencies.redis.ping();
+        return {
+          status: 'healthy',
+          responseTime: Date.now() - start,
+          details: 'Redis connection successful'
+        };
+      } catch (error) {
+        return {
+          status: 'unhealthy',
+          responseTime: Date.now() - start,
+          details: error.message
+        };
+      }
+    });
+
+    // Memory usage check
+    this.addCheck('memory', async () => {
+      const usage = process.memoryUsage();
+      const usagePercent = (usage.heapUsed / usage.heapTotal) * 100;
+      
+      return {
+        status: usagePercent < 90 ? 'healthy' : 'unhealthy',
+        details: {
+          heapUsed: `${Math.round(usage.heapUsed / 1024 / 1024)}MB`,
+          heapTotal: `${Math.round(usage.heapTotal / 1024 / 1024)}MB`,
+          usagePercent: `${usagePercent.toFixed(2)}%`
+        }
+      };
+    });
+
+    // Disk space check
+    this.addCheck('disk', async () => {
+      try {
+        const stats = await this.getDiskStats();
+        const usagePercent = ((stats.total - stats.free) / stats.total) * 100;
+        
+        return {
+          status: usagePercent < 90 ? 'healthy' : 'unhealthy',
+          details: {
+            total: `${Math.round(stats.total / 1024 / 1024 / 1024)}GB`,
+            free: `${Math.round(stats.free / 1024 / 1024 / 1024)}GB`,
+            usagePercent: `${usagePercent.toFixed(2)}%`
+          }
+        };
+      } catch (error) {
+        return {
+          status: 'unhealthy',
+          details: error.message
+        };
+      }
+    });
+  }
+
+  addCheck(name, checkFunction) {
+    this.checks.set(name, checkFunction);
+  }
+
+  async runAllChecks() {
+    const results = {};
+    let overallStatus = 'healthy';
+
+    for (const [name, checkFunction] of this.checks) {
+      try {
+        const result = await Promise.race([
+          checkFunction(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Health check timeout')), 5000)
+          )
+        ]);
+        
+        results[name] = result;
+        
+        if (result.status === 'unhealthy') {
+          overallStatus = 'unhealthy';
+        }
+      } catch (error) {
+        results[name] = {
+          status: 'unhealthy',
+          details: error.message
+        };
+        overallStatus = 'unhealthy';
+      }
+    }
+
+    return {
+      status: overallStatus,
+      timestamp: new Date().toISOString(),
+      version: process.env.VERSION || '1.0.0',
+      uptime: process.uptime(),
+      checks: results
+    };
+  }
+
+  async getDiskStats() {
+    const fs = require('fs').promises;
+    const stats = await fs.statfs('.');
+    return {
+      total: stats.bavail * stats.bsize,
+      free: stats.bfree * stats.bsize
+    };
+  }
+}
+
+// Health check routes
+const setupHealthRoutes = (app, healthService) => {
+  // Liveness probe - basic check
+  app.get('/health/live', (req, res) => {
+    res.status(200).json({
+      status: 'alive',
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // Readiness probe - full health check
+  app.get('/health/ready', async (req, res) => {
+    try {
+      const health = await healthService.runAllChecks();
+      const statusCode = health.status === 'healthy' ? 200 : 503;
+      
+      res.status(statusCode).json(health);
+      
+      if (health.status === 'unhealthy') {
+        logger.warn('Health check failed', { health });
+      }
+    } catch (error) {
+      logger.error('Health check error', { error: error.message });
+      res.status(503).json({
+        status: 'unhealthy',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Detailed health information
+  app.get('/health/detail', async (req, res) => {
+    const health = await healthService.runAllChecks();
+    res.json(health);
+  });
+};
+
+module.exports = { HealthCheckService, setupHealthRoutes };
+```
+
+## Error Tracking and Alerting
+
+### Sentry Integration
+
+Implement comprehensive error tracking:
+
+```javascript
+// sentry.js - Error tracking setup
+const Sentry = require('@sentry/node');
+const { ProfilingIntegration } = require('@sentry/profiling-node');
+
+// Initialize Sentry
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV,
+  release: process.env.VERSION,
+  
+  // Performance monitoring
+  tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+  
+  // Profiling
+  profilesSampleRate: 0.1,
+  
+  integrations: [
+    new ProfilingIntegration()
+  ],
+  
+  // Error filtering
+  beforeSend: (event, hint) => {
+    // Filter out certain errors
+    if (event.exception) {
+      const error = hint.originalException;
+      if (error && error.statusCode && error.statusCode < 500) {
+        return null; // Don't send client errors to Sentry
+      }
+    }
+    return event;
+  },
+  
+  // Performance filtering
+  beforeSendTransaction: (event) => {
+    // Sample transactions based on operation
+    if (event.transaction && event.transaction.includes('health')) {
+      return null; // Don't track health check transactions
+    }
+    return event;
+  }
+});
+
+// Error tracking service
+class ErrorTracker {
+  static captureException(error, context = {}) {
+    Sentry.withScope((scope) => {
+      // Add context
+      if (context.user) {
+        scope.setUser(context.user);
+      }
+      
+      if (context.request) {
+        scope.setTag('method', context.request.method);
+        scope.setTag('url', context.request.url);
+        scope.setContext('request', {
+          method: context.request.method,
+          url: context.request.url,
+          headers: context.request.headers,
+          body: context.request.body
+        });
+      }
+      
+      // Set severity based on error type
+      if (error.statusCode >= 500) {
+        scope.setLevel('error');
+      } else if (error.statusCode >= 400) {
+        scope.setLevel('warning');
+      } else {
+        scope.setLevel('error');
+      }
+      
+      Sentry.captureException(error);
+    });
+  }
+
+  static captureMessage(message, level = 'info', context = {}) {
+    Sentry.withScope((scope) => {
+      scope.setLevel(level);
+      
+      if (context.user) {
+        scope.setUser(context.user);
+      }
+      
+      Object.keys(context).forEach(key => {
+        scope.setExtra(key, context[key]);
+      });
+      
+      Sentry.captureMessage(message);
+    });
+  }
+
+  static addBreadcrumb(message, category, data = {}) {
+    Sentry.addBreadcrumb({
+      message,
+      category,
+      data,
+      timestamp: Date.now()
+    });
+  }
+}
+
+// Sentry middleware
+const sentryMiddleware = (req, res, next) => {
+  // Add request context
+  Sentry.configureScope((scope) => {
+    scope.setTag('method', req.method);
+    scope.setTag('url', req.url);
+    scope.setUser({
+      id: req.user?.id,
+      email: req.user?.email
+    });
+  });
+  
+  // Add breadcrumb for request
+  ErrorTracker.addBreadcrumb(
+    `${req.method} ${req.url}`,
+    'http',
+    {
+      method: req.method,
+      url: req.url,
+      userAgent: req.get('User-Agent')
+    }
+  );
+  
+  next();
+};
+
+module.exports = { ErrorTracker, sentryMiddleware };
+```
+
+### Alerting System
+
+Implement intelligent alerting:
+
+```javascript
+// alerting.js - Alerting system
+const { logger } = require('./logger');
+
+class AlertingService {
+  constructor(config) {
+    this.config = config;
+    this.alertCooldowns = new Map();
+    this.thresholds = {
+      errorRate: 0.05,        // 5% error rate
+      responseTime: 1000,     // 1 second
+      memoryUsage: 0.9,       // 90% memory usage
+      diskUsage: 0.9,         // 90% disk usage
+      cpuUsage: 0.8           // 80% CPU usage
+    };
+  }
+
+  async sendAlert(alertType, message, severity = 'warning', metadata = {}) {
+    const alertKey = `${alertType}_${severity}`;
+    const cooldownMinutes = this.getCooldownMinutes(severity);
+    
+    // Check cooldown
+    if (this.isInCooldown(alertKey, cooldownMinutes)) {
+      return;
+    }
+    
+    const alert = {
+      type: alertType,
+      severity,
+      message,
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      service: process.env.SERVICE_NAME,
+      metadata
+    };
+
+    // Log alert
+    logger.error('Alert triggered', alert);
+    
+    // Send to various channels
+    await Promise.all([
+      this.sendSlackAlert(alert),
+      this.sendEmailAlert(alert),
+      this.sendPagerDutyAlert(alert)
+    ]);
+    
+    // Set cooldown
+    this.alertCooldowns.set(alertKey, Date.now());
+  }
+
+  async sendSlackAlert(alert) {
+    if (!this.config.slack?.webhookUrl) return;
+    
+    try {
+      const color = this.getSeverityColor(alert.severity);
+      const payload = {
+        attachments: [{
+          color,
+          title: `🚨 ${alert.severity.toUpperCase()}: ${alert.type}`,
+          text: alert.message,
+          fields: [
+            {
+              title: 'Environment',
+              value: alert.environment,
+              short: true
+            },
+            {
+              title: 'Service',
+              value: alert.service,
+              short: true
+            },
+            {
+              title: 'Timestamp',
+              value: alert.timestamp,
+              short: false
+            }
+          ],
+          footer: 'Application Monitoring',
+          ts: Math.floor(Date.now() / 1000)
+        }]
+      };
+
+      await fetch(this.config.slack.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (error) {
+      logger.error('Failed to send Slack alert', { error: error.message });
+    }
+  }
+
+  async sendEmailAlert(alert) {
+    if (!this.config.email?.enabled) return;
+    
+    try {
+      // Implement email sending logic
+      logger.info('Email alert sent', { alert });
+    } catch (error) {
+      logger.error('Failed to send email alert', { error: error.message });
+    }
+  }
+
+  async sendPagerDutyAlert(alert) {
+    if (!this.config.pagerduty?.enabled || alert.severity !== 'critical') return;
+    
+    try {
+      // Implement PagerDuty integration
+      logger.info('PagerDuty alert sent', { alert });
+    } catch (error) {
+      logger.error('Failed to send PagerDuty alert', { error: error.message });
+    }
+  }
+
+  isInCooldown(alertKey, cooldownMinutes) {
+    const lastAlert = this.alertCooldowns.get(alertKey);
+    if (!lastAlert) return false;
+    
+    const cooldownMs = cooldownMinutes * 60 * 1000;
+    return Date.now() - lastAlert < cooldownMs;
+  }
+
+  getCooldownMinutes(severity) {
+    switch (severity) {
+      case 'critical': return 5;
+      case 'error': return 15;
+      case 'warning': return 30;
+      default: return 60;
+    }
+  }
+
+  getSeverityColor(severity) {
+    switch (severity) {
+      case 'critical': return 'danger';
+      case 'error': return 'warning';
+      case 'warning': return 'good';
+      default: return '#36a64f';
+    }
+  }
+
+  // Monitor metrics and trigger alerts
+  async checkMetrics(metrics) {
+    // Error rate check
+    if (metrics.errorRate > this.thresholds.errorRate) {
+      await this.sendAlert(
+        'high_error_rate',
+        `Error rate is ${(metrics.errorRate * 100).toFixed(2)}%, threshold is ${(this.thresholds.errorRate * 100)}%`,
+        'error',
+        { errorRate: metrics.errorRate }
+      );
+    }
+
+    // Response time check
+    if (metrics.avgResponseTime > this.thresholds.responseTime) {
+      await this.sendAlert(
+        'slow_response_time',
+        `Average response time is ${metrics.avgResponseTime}ms, threshold is ${this.thresholds.responseTime}ms`,
+        'warning',
+        { responseTime: metrics.avgResponseTime }
+      );
+    }
+
+    // Memory usage check
+    if (metrics.memoryUsage > this.thresholds.memoryUsage) {
+      await this.sendAlert(
+        'high_memory_usage',
+        `Memory usage is ${(metrics.memoryUsage * 100).toFixed(2)}%, threshold is ${(this.thresholds.memoryUsage * 100)}%`,
+        'warning',
+        { memoryUsage: metrics.memoryUsage }
+      );
+    }
+  }
+}
+
+module.exports = { AlertingService };
+```
+
+## Distributed Tracing
+
+### OpenTelemetry Implementation
+
+Implement distributed tracing:
+
+```javascript
+// tracing.js - OpenTelemetry setup
+const { NodeSDK } = require('@opentelemetry/sdk-node');
+const { HttpInstrumentation } = require('@opentelemetry/instrumentation-http');
+const { ExpressInstrumentation } = require('@opentelemetry/instrumentation-express');
+const { JaegerExporter } = require('@opentelemetry/exporter-jaeger');
+const { Resource } = require('@opentelemetry/resources');
+const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
+
+// Initialize tracing
+const init = () => {
+  const jaegerExporter = new JaegerExporter({
+    endpoint: process.env.JAEGER_ENDPOINT || 'http://localhost:14268/api/traces'
+  });
+
+  const sdk = new NodeSDK({
+    resource: new Resource({
+      [SemanticResourceAttributes.SERVICE_NAME]: process.env.SERVICE_NAME || 'api',
+      [SemanticResourceAttributes.SERVICE_VERSION]: process.env.VERSION || '1.0.0',
+      [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || 'development'
+    }),
+    traceExporter: jaegerExporter,
+    instrumentations: [
+      new HttpInstrumentation(),
+      new ExpressInstrumentation(),
+      // Add more instrumentations as needed
+    ]
+  });
+
+  sdk.start();
+  
+  return sdk;
+};
+
+// Manual tracing
+const { trace } = require('@opentelemetry/api');
+
+class TracingService {
+  static getTracer() {
+    return trace.getTracer(process.env.SERVICE_NAME || 'api');
+  }
+
+  static async traceFunction(name, fn, attributes = {}) {
+    const tracer = this.getTracer();
+    
+    return tracer.startActiveSpan(name, { attributes }, async (span) => {
+      try {
+        const result = await fn(span);
+        span.setStatus({ code: trace.SpanStatusCode.OK });
+        return result;
+      } catch (error) {
+        span.setStatus({
+          code: trace.SpanStatusCode.ERROR,
+          message: error.message
+        });
+        span.recordException(error);
+        throw error;
+      } finally {
+        span.end();
+      }
+    });
+  }
+
+  static addEvent(name, attributes = {}) {
+    const span = trace.getActiveSpan();
+    if (span) {
+      span.addEvent(name, attributes);
+    }
+  }
+
+  static setAttributes(attributes) {
+    const span = trace.getActiveSpan();
+    if (span) {
+      span.setAttributes(attributes);
+    }
+  }
+}
+
+module.exports = { init, TracingService };
+```
+
+## Log Aggregation and Analysis
+
+### ELK Stack Configuration
+
+Set up centralized logging:
+
+```yaml
+# docker-compose.elk.yml
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.8.0
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.8.0
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+
+volumes:
+  elasticsearch_data:
+```
+
+```ruby
+# logstash.conf
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  if [fields][service] {
+    mutate {
+      add_field => { "service" => "%{[fields][service]}" }
+    }
+  }
+
+  # Parse JSON logs
+  if [message] {
+    json {
+      source => "message"
+    }
+  }
+
+  # Parse timestamp
+  if [timestamp] {
+    date {
+      match => [ "timestamp", "yyyy-MM-dd HH:mm:ss" ]
+    }
+  }
+
+  # Add geoip for IP addresses
+  if [ip] {
+    geoip {
+      source => "ip"
+      target => "geoip"
+    }
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["elasticsearch:9200"]
+    index => "logs-%{+YYYY.MM.dd}"
+  }
+  
+  stdout {
+    codec => rubydebug
+  }
+}
+```
+
+## Our Complete Monitoring Methodology
+
+<GitHubShowcase 
+  repo="vimasa-consulting/monitoring-observability-framework"
+  description="Explore our comprehensive monitoring and observability framework with distributed tracing, log aggregation, and alerting systems used in applications with 99.9% uptime."
+/>
+
+## Production Monitoring Checklist
+
+Before deploying to production:
+
+- [ ] **Structured Logging**: Comprehensive logging with proper log levels
+- [ ] **Metrics Collection**: Key performance indicators and business metrics
+- [ ] **Health Checks**: Liveness and readiness probes
+- [ ] **Error Tracking**: Automated error capture and alerting
+- [ ] **Performance Monitoring**: Response times and resource usage
+- [ ] **Alerting**: Intelligent alerts with proper thresholds
+- [ ] **Log Aggregation**: Centralized log collection and analysis
+- [ ] **Distributed Tracing**: Request tracing across services
+- [ ] **Dashboards**: Visual monitoring dashboards
+- [ ] **Incident Response**: Clear procedures for issue resolution
+
+<Callout type="success">
+Comprehensive monitoring and logging reduces mean time to resolution by 70% and prevents 80% of incidents through proactive alerting.
+</Callout>
+
+## External Resources for Continued Learning
+
+- **[Prometheus Documentation](https://prometheus.io/docs/)**: Open-source monitoring and alerting toolkit
+- **[Grafana Documentation](https://grafana.com/docs/)**: Analytics and interactive visualization platform
+- **[ELK Stack Guide](https://www.elastic.co/what-is/elk-stack)**: Elasticsearch, Logstash, and Kibana stack
+- **[Winston Documentation](https://github.com/winstonjs/winston)**: Node.js logging library
+- **[Sentry Documentation](https://docs.sentry.io/)**: Application monitoring and error tracking
+
+## Conclusion
+
+Effective monitoring and logging are essential for maintaining reliable production systems. By implementing structured logging, comprehensive metrics collection, intelligent alerting, and observability practices, you can proactively identify issues, reduce downtime, and improve overall system reliability.
+
+Remember that monitoring is not just about collecting data—it's about turning that data into actionable insights that help you deliver better user experiences and maintain system health.
+
+---
+
+*This guide is part of our comprehensive technical education platform. Explore our [monitoring methodology](https://github.com/vimasa-consulting/monitoring-observability-framework) for more production-ready practices.* 
