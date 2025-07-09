@@ -15,6 +15,7 @@ export default function Navigation() {
   ]
 
   const resourceItems = [
+    { name: 'Search', href: '/search' },
     { name: 'About', href: '/about' },
     { name: 'Methodology', href: '/methodology' },
     { name: 'Support', href: '/support' },
